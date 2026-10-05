@@ -1,5 +1,5 @@
 # Set working directory
-setwd("~/OneDrive - University of Bristol/PhD year 1/R code and data")
+setwd("~/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data")
 
 # Load packages
 library(dplyr)
