@@ -17,12 +17,12 @@ library(broom)
 # Aleutian Island (AI)
 #=====================
 
-# No CPUE measurement
-
 ai_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/AI_clean.RData", envir = ai_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/AI_clean.RData",
+     envir = ai_env)
 ai_full <- ai_env$data
 
+# Modify dataset to get 1x1 grid square for each observation and select necessary variables
 ai <- ai_full %>%
   ungroup() %>%
   mutate(
@@ -30,18 +30,94 @@ ai <- ai_full %>%
     lon_cell = floor(longitude)
   ) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, wgt_cpua, accepted_name, order, class)
 
+# Firstly, find species that have ever been recorded in each grid square
+ai_species <- ai %>%
+  filter(wgt_cpua > 0) %>% # Keeping only positive observations
+  distinct(                # Removing duplicates for each grid cell x species combination
+    lat_cell,
+    lon_cell,
+    accepted_name,
+    order,
+    class
+  )
+
+# **CHECK** Only one row per species per grid cell
+ai_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Get a list of all the individual hauls
+# As may have many rows per haul
+ai_hauls <- ai %>%
+  distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
+
+# **CHECK** Only one row per haul
+ai_hauls %>%
+  count(survey, haul_id) %>%
+  filter(n > 1)
+
+# Create every possible haul x species combination
+ai_complete <- ai_hauls %>%
+  inner_join(
+    ai_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  
+  # Add actual observations back in
+  left_join(
+    ai %>%
+      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpua),
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name","order", "class"
+    )
+  ) %>%
+  
+  # Any missing observations become zero
+  mutate(wgt_cpua = replace_na(wgt_cpua, 0))
+
+# Now calculate mean_cpue of all events in a grid square, per species, per year, per survey
+ai_mean_wgt_cpua <- ai_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_wgt_cpua = mean(wgt_cpua, na.rm = TRUE),
+    n_hauls = n(),
+    .groups = "drop"
+  )
+
+# **CHECK** Every species/grid cell combination has >1 positive combination
+ai_mean_wgt_cpua %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_wgt_cpua = max(mean_wgt_cpua),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpua = sum(max_mean_wgt_cpua > 0),
+    n_with_zero_only = sum(max_mean_wgt_cpua == 0)
+  )
+
+# Filter for chondrichthyes (elasmobranchii and holocephali/chimaeriformes)
+unique(ai_full$class)
+
+ai_elasmo_ts <- ai_mean_wgt_cpua %>%
+  filter(class %in% c("Elasmobranchii"))
+
+# Clean house
 rm(ai_env)
 rm(ai_full)
-rm(ai)
+rm(ai_species)
+rm(ai_hauls)
+rm(ai_complete)
 
 
 #==================
 # Baltic Sea (BITS)
 #==================
 bits_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/BITS_clean.RData", envir = bits_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/BITS_clean.RData",
+     envir = bits_env)
 bits_full <- bits_env$data
 
 # Modify dataset to get 1x1 grid square for each observation and select necessary variables
@@ -138,12 +214,12 @@ rm(bits_complete)
 # Eastern Bering Sea (EBS)
 #=========================
 
-# No CPUE measurement
-
 ebs_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/EBS_clean.RData", envir = ebs_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/EBS_clean.RData",
+     envir = ebs_env)
 ebs_full <- ebs_env$data
 
+# Modify dataset to get 1x1 grid square for each observation and select necessary variables
 ebs <- ebs_full %>%
   ungroup() %>%
   mutate(
@@ -151,18 +227,90 @@ ebs <- ebs_full %>%
     lon_cell = floor(longitude)
   ) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, wgt_cpua, accepted_name, order, class)
 
+# Firstly, find species that have ever been recorded in each grid square
+ebs_species <- ebs %>%
+  filter(wgt_cpua > 0) %>% # Keeping only positive observations
+  distinct(                # Removing duplicates for each grid cell x species combination
+    lat_cell,
+    lon_cell,
+    accepted_name,
+    order,
+    class
+  )
+
+# **CHECK** Only one row per species per grid cell
+ebs_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Get a list of all the individual hauls
+# As may have many rows per haul
+ebs_hauls <- ebs %>%
+  distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
+
+# **CHECK** Only one row per haul
+ebs_hauls %>%
+  count(survey, haul_id) %>%
+  filter(n > 1)
+
+# Create every possible haul x species combination
+ebs_complete <- ebs_hauls %>%
+  inner_join(
+    ebs_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    ebs %>%
+      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpua),
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name","order", "class"
+    )
+  ) %>%
+  mutate(wgt_cpua = replace_na(wgt_cpua, 0))
+
+# Now calculate mean_cpue of all events in a grid square, per species, per year, per survey
+ebs_mean_wgt_cpua <- ebs_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_wgt_cpua = mean(wgt_cpua, na.rm = TRUE),
+    n_hauls = n(),
+    .groups = "drop"
+  )
+
+# **CHECK** Every species/grid cell combination has >1 positive combination
+ebs_mean_wgt_cpua %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_wgt_cpua = max(mean_wgt_cpua),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpua = sum(max_mean_wgt_cpua > 0),
+    n_with_zero_only = sum(max_mean_wgt_cpua == 0)
+  )
+
+# Filter for chondrichthyes (elasmobranchii and holocephali/chimaeriformes)
+unique(ebs_full$class)
+
+ebs_elasmo_ts <- ebs_mean_wgt_cpua %>%
+  filter(class %in% c("Elasmobranchii"))
+
+# Clean house
 rm(ebs_env)
 rm(ebs_full)
-rm(ebs)
+rm(ebs_species)
+rm(ebs_hauls)
+rm(ebs_complete)
 
 
 #======================
 # Bay of Biscay (EVHOE)
 #======================
 evhoe_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/EVHOE_clean.RData", envir = evhoe_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/EVHOE_clean.RData",
+     envir = evhoe_env)
 evhoe_full <- evhoe_env$data
 
 evhoe <- evhoe_full %>%
@@ -248,7 +396,8 @@ rm(evhoe_complete)
 # English Channel (FR-CGFS)
 #==========================
 fr_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/FR-CGFS_clean.RData", envir = fr_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/FR-CGFS_clean.RData",
+     envir = fr_env)
 fr_full <- fr_env$data
 
 fr <- fr_full %>%
@@ -334,7 +483,8 @@ rm(fr_complete)
 # Gulf of Mexico (GMEX)
 #=======================
 gmex_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/GMEX_clean.RData", envir = gmex_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/GMEX_clean.RData",
+     envir = gmex_env)
 gmex_full <- gmex_env$data
 
 gmex <- gmex_full %>%
@@ -420,12 +570,12 @@ rm(gmex_complete)
 # Gulf of Alaska (GOA)
 #=====================
 
-# No CPUE measurement
-
 goa_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/GOA_clean.RData", envir = goa_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/GOA_clean.RData",
+     envir = goa_env)
 goa_full <- goa_env$data
 
+# Modify dataset to get 1x1 grid square for each observation and select necessary variables
 goa <- goa_full %>%
   ungroup() %>%
   mutate(
@@ -433,18 +583,89 @@ goa <- goa_full %>%
     lon_cell = floor(longitude)
   ) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, wgt_cpua, accepted_name, order, class)
 
+# Firstly, find species that have ever been recorded in each grid square
+goa_species <- goa %>%
+  filter(wgt_cpua > 0) %>% # Keeping only positive observations
+  distinct(                # Removing duplicates for each grid cell x species combination
+    lat_cell,
+    lon_cell,
+    accepted_name,
+    order,
+    class
+  )
+
+# **CHECK** Only one row per species per grid cell
+goa_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Get a list of all the individual hauls
+# As may have many rows per haul
+goa_hauls <- goa %>%
+  distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
+
+# **CHECK** Only one row per haul
+goa_hauls %>%
+  count(survey, haul_id) %>%
+  filter(n > 1)
+
+# Create every possible haul x species combination
+goa_complete <- goa_hauls %>%
+  inner_join(
+    goa_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    goa %>%
+      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpua),
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name","order", "class"
+    )
+  ) %>%
+  mutate(wgt_cpua = replace_na(wgt_cpua, 0))
+
+# Now calculate mean_cpue of all events in a grid square, per species, per year, per survey
+goa_mean_wgt_cpua <- goa_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_wgt_cpua = mean(wgt_cpua, na.rm = TRUE),
+    n_hauls = n(),
+    .groups = "drop"
+  )
+
+# **CHECK** Every species/grid cell combination has >1 positive combination
+goa_mean_wgt_cpua %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_wgt_cpua = max(mean_wgt_cpua),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpua = sum(max_mean_wgt_cpua > 0),
+    n_with_zero_only = sum(max_mean_wgt_cpua == 0)
+  )
+
+# Filter for chondrichthyes (elasmobranchii and holocephali/chimaeriformes)
+unique(goa_full$class)
+
+goa_elasmo_ts <- goa_mean_wgt_cpua %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
+# Clean house
 rm(goa_env)
 rm(goa_full)
-rm(goa)
-
+rm(goa_species)
+rm(goa_hauls)
+rm(goa_complete)
 
 #=====================================
 # Northern Gulf of St Lawrence (GSL-N)
 #=====================================
 gsln_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/GSL-N_clean.RData", envir = gsln_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/GSL-N_clean.RData",
+     envir = gsln_env)
 gsln_full <- gsln_env$data
 
 # Fixing encoding issue because of é
@@ -536,7 +757,8 @@ rm(gsln_complete)
 # Southern Gulf of St Lawrence (GSL-S)
 #=====================================
 gsls_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/GSL-S_clean.RData", envir = gsls_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/GSL-S_clean.RData",
+     envir = gsls_env)
 gsls_full <- gsls_env$data
 
 gsls <- gsls_full %>%
@@ -618,35 +840,272 @@ rm(gsls_hauls)
 rm(gsls_complete)
 
 
-#===========================
-# Canada, Hecate Strait (HS)
-#===========================
-
-# Some observations do not have CPUE values
-
+#=============================================
+# Canada, Hecate Strait (HS) ** SPLIT INTO TWO
+#=============================================
 hs_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/HS_clean.RData", envir = hs_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/HS_clean.RData",
+     envir = hs_env)
 hs_full <- hs_env$data
 
+# Prepare the dataset
 hs <- hs_full %>%
   ungroup() %>%
   mutate(
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
 
+# Check that no rows are all NAs (and therefore should not be treated as observations)
+hs %>%
+  filter(
+    is.na(num_cpue) &
+      is.na(num_cpua) &
+      is.na(wgt_cpue) &
+      is.na(wgt_cpua)
+  )
+
+# Check the data structure
+
+# Check for duplicated elasmobranch records
+hs %>%
+  filter(class == "Elasmobranchii") %>%
+  count(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Not elasmobranchs so only matters that there is a record of the survey within grid cell
+
+# Create the haul level dataset
+# Records each sampled haul once
+hs_hauls <- hs %>%
+  distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
+
+# Check each haul only has one row
+hs_hauls %>%
+  count(survey,haul_id) %>%
+  filter(n > 1)
+
+#------------
+# NUMBER DATA
+#------------
+
+# Only species with at least one number observation are included in the number pool
+# A species with only weight is NOT included
+hs_num_species <- hs %>%
+  filter(!is.na(num_cpue)) %>%
+  distinct(lat_cell, lon_cell, accepted_name, order, class)
+
+# **CHECK** for duplicates
+hs_num__species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Keep the original number records
+# With an indicator showing the species was actually recorded in the haul
+hs_num_records <- hs %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, num_cpue) %>%
+  mutate(num_record = TRUE)
+
+# Complete haul x species dataset
+hs_num_complete <- hs_hauls %>%
+  inner_join(
+    hs_num_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    hs_num_records,
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
+    relationship = "many-to-many"
+  ) %>%
+  mutate(
+    # No species record = absence = 0.
+    # Species recorded but number unavailable = NA.
+    num_cpue = if_else(
+      is.na(num_record),
+      0,
+      num_cpue))
+
+# Calculate the mean
+hs_num_mean_cpue <- hs_num_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    n_hauls = n(),
+    .groups = "drop")
+
+# **CHECK** Check that any rows with NaN are actually weight-only rows and not
+# rows where data is missing
+hs_num_mean_cpue %>%
+  filter(is.nan(mean_cpue)) %>%
+  select(year, lat_cell, lon_cell, accepted_name) %>%
+  left_join(
+    hs %>%
+      group_by(year, lat_cell, lon_cell, accepted_name) %>%
+      summarise(
+        n_weight = sum(!is.na(wgt_cpue)),
+        n_num = sum(!is.na(num_cpue)),
+        .groups = "drop"
+      ),
+    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+  ) %>%
+  summarise(
+    n_combinations = n(),
+    all_weight_only = all(n_weight > 0 & n_num == 0),
+    n_weight_only = sum(n_weight > 0 & n_num == 0),
+    n_neither = sum(n_weight == 0 & n_num == 0),
+    n_with_number = sum(n_num > 0)
+  )
+
+# Convert NaN values to NA for easier interpretation
+hs_num_mean_cpue <- hs_num_mean_cpue %>%
+  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+
+# Filter
+unique(hs_full$class)
+
+hs_num_elasmo_ts <- hs_num_mean_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
+#------------
+# WEIGHT DATA
+#------------
+
+# Only species with at least one weight observation are included in the number pool
+# A species with only number is NOT included
+hs_wgt_species <- hs %>%
+  filter(!is.na(wgt_cpue)) %>%
+  distinct(lat_cell, lon_cell, accepted_name, order, class)
+
+# **CHECK** for duplicates
+hs_wgt_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Keep the original weight records
+# With an indicator showing the species was actually recorded in the haul
+hs_wgt_records <- hs %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
+  mutate(num_record = TRUE)
+
+# Complete haul x species dataset
+hs_wgt_complete <- hs_hauls %>%
+  inner_join(
+    hs_wgt_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    hs_wgt_records,
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
+    relationship = "many-to-many"
+  ) %>%
+  mutate(
+    # No species record = absence = 0.
+    # Species recorded but number unavailable = NA.
+    wgt_cpue = if_else(
+      is.na(num_record),
+      0,
+      wgt_cpue))
+
+# Calculate the mean
+hs_wgt_mean_cpue <- hs_wgt_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_cpue = mean(wgt_cpue, na.rm = TRUE),
+    n_hauls = n(),
+    .groups = "drop")
+
+# **CHECK** Check that any rows with NaN are actually weight-only rows and not
+# rows where data is missing
+hs_wgt_mean_cpue %>%
+  filter(is.nan(mean_cpue)) %>%
+  select(year, lat_cell, lon_cell, accepted_name) %>%
+  left_join(
+    hs %>%
+      group_by(year, lat_cell, lon_cell, accepted_name) %>%
+      summarise(
+        n_num = sum(!is.na(num_cpue)),
+        n_weight = sum(!is.na(wgt_cpue)),
+        .groups = "drop"
+      ),
+    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+  ) %>%
+  summarise(
+    n_combinations = n(),
+    all_number_only = all(n_num > 0 & n_weight == 0),
+    n_num_only = sum(n_num > 0 & n_weight == 0),
+    n_neither = sum(n_weight == 0 & n_num == 0),
+    n_with_weight = sum(n_weight > 0)
+  )
+
+# Convert NaN values to NA for easier interpretation
+hs_wgt_mean_cpue <- hs_wgt_mean_cpue %>%
+  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+
+# Filter
+unique(hs_full$class)
+
+hs_wgt_elasmo_ts <- hs_wgt_mean_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
+# Final checks
+# For each species and spatial cell, determine whether it
+# ever has positive mean number CPUE.
+
+hs_num_mean_cpue %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_cpue = max(
+      mean_cpue,
+      na.rm = TRUE),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpue = sum(
+      max_mean_cpue > 0),
+    n_with_zero_only = sum(
+      max_mean_cpue == 0))
+
+hs_wgt_mean_cpue %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_cpue = max(
+      mean_cpue,
+      na.rm = TRUE),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpue = sum(
+      max_mean_cpue > 0),
+    n_with_zero_only = sum(
+      max_mean_cpue == 0))
+
+# Clean house
 rm(hs_env)
 rm(hs_full)
-rm(hs)
+rm(hs_num_species)
+rm(hs_num_complete)
+rm(hs_wgt_species)
+rm(hs_wgt_records)
+rm(hs_wgt_complete)
+rm(hs_species_records)
+rm(hs_hauls)
 
 
 #====================
 # Irish Sea (IE-IGFS)
 #====================
 ie_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/IE-IGFS_clean.RData", envir = ie_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/IE-IGFS_clean.RData",
+     envir = ie_env)
 ie_full <- ie_env$data
 
 ie <- ie_full %>%
@@ -732,7 +1191,8 @@ rm(ie_complete)
 # Northeast US (NEUS)
 #====================
 neus_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/NEUS_clean.RData", envir = neus_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/NEUS_clean.RData",
+     envir = neus_env)
 neus_full <- neus_env$data
 
 neus <- neus_full %>%
@@ -818,7 +1278,8 @@ rm(neus_complete)
 # Northern Ireland (NIGFS)
 #=========================
 nigfs_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/NIGFS_clean.RData", envir = nigfs_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/NIGFS_clean.RData",
+     envir = nigfs_env)
 nigfs_full <- nigfs_env$data
 
 nigfs <- nigfs_full %>%
@@ -904,7 +1365,8 @@ rm(nigfs_complete)
 # Norway (NOR-BTS)
 #=================
 nor_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/NOR-BTS_clean.RData", envir = nor_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/NOR-BTS_clean.RData",
+     envir = nor_env)
 nor_full <- nor_env$data
 
 nor <- nor_full %>%
@@ -990,7 +1452,8 @@ rm(nor_complete)
 # North Sea (NS-IBTS)
 #====================
 ns_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/NS-IBTS_clean.RData", envir = ns_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/NS-IBTS_clean.RData",
+     envir = ns_env)
 ns_full <- ns_env$data
 
 ns <- ns_full %>%
@@ -1076,7 +1539,8 @@ rm(ns_complete)
 # Portugal (PT-IBTS)
 #===================
 pt_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/PT-IBTS_clean.RData", envir = pt_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/PT-IBTS_clean.RData",
+     envir = pt_env)
 pt_full <- pt_env$data
 
 pt <- pt_full %>%
@@ -1162,31 +1626,266 @@ rm(pt_complete)
 # Canada, Queen Charlotte (QCS)
 #==============================
 
-# No CPUE measurement
-
 qcs_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/QCS_clean.RData", envir = qcs_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/QCS_clean.RData",
+     envir = qcs_env)
 qcs_full <- qcs_env$data
 
+# Prepare the dataset
 qcs <- qcs_full %>%
   ungroup() %>%
   mutate(
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
 
+# Check that no rows are all NAs (and therefore should not be treated as observations)
+# Can also check for whether there are rows which are only e.g. num_cpua as this would 
+# need to be accounted for
+qcs %>%
+  filter(
+    is.na(num_cpue) &
+      is.na(num_cpua) &
+      is.na(wgt_cpue) &
+      is.na(wgt_cpua)
+  )
+
+# Check the data structure
+
+# Check for duplicated elasmobranch records
+qcs %>%
+  filter(class == "Elasmobranchii") %>%
+  count(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Not elasmobranchs so only matters that there is a record of the survey within grid cell
+
+# Create the haul level dataset
+# Records each sampled haul once
+qcs_hauls <- qcs %>%
+  distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
+
+# Check each haul only has one row
+qcs_hauls %>%
+  count(survey,haul_id) %>%
+  filter(n > 1)
+
+#------------
+# NUMBER DATA
+#------------
+
+# Only species with at least one number observation are included in the number pool
+# A species with only weight is NOT included
+qcs_num_species <- qcs %>%
+  filter(!is.na(num_cpue)) %>%
+  distinct(lat_cell, lon_cell, accepted_name, order, class)
+
+# **CHECK** for duplicates
+qcs_num_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Keep the original number records
+# With an indicator showing the species was actually recorded in the haul
+qcs_num_records <- qcs %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, num_cpue) %>%
+  mutate(num_record = TRUE)
+
+# Complete haul x species dataset
+qcs_num_complete <- qcs_hauls %>%
+  inner_join(
+    qcs_num_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    qcs_num_records,
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
+    relationship = "many-to-many"
+  ) %>%
+  mutate(
+    # No species record = absence = 0.
+    # Species recorded but number unavailable = NA.
+    num_cpue = if_else(
+      is.na(num_record),
+      0,
+      num_cpue))
+
+# Calculate the mean
+qcs_num_mean_cpue <- qcs_num_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    n_hauls = n(),
+    .groups = "drop")
+
+# **CHECK** Check that any rows with NaN are actually weight-only rows and not
+# rows where data is missing
+qcs_num_mean_cpue %>%
+  filter(is.nan(mean_cpue)) %>%
+  select(year, lat_cell, lon_cell, accepted_name) %>%
+  left_join(
+    qcs %>%
+      group_by(year, lat_cell, lon_cell, accepted_name) %>%
+      summarise(
+        n_weight = sum(!is.na(wgt_cpue)),
+        n_num = sum(!is.na(num_cpue)),
+        .groups = "drop"
+      ),
+    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+  ) %>%
+  summarise(
+    n_combinations = n(),
+    all_weight_only = all(n_weight > 0 & n_num == 0),
+    n_weight_only = sum(n_weight > 0 & n_num == 0),
+    n_neither = sum(n_weight == 0 & n_num == 0),
+    n_with_number = sum(n_num > 0)
+  )
+
+# Convert NaN values to NA for easier interpretation
+qcs_num_mean_cpue <- qcs_num_mean_cpue %>%
+  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+
+# Filter
+unique(qcs_full$class)
+
+qcs_num_elasmo_ts <- qcs_num_mean_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
+#------------
+# WEIGHT DATA
+#------------
+
+# Only species with at least one weight observation are included in the number pool
+# A species with only number is NOT included
+qcs_wgt_species <- qcs %>%
+  filter(!is.na(wgt_cpue)) %>%
+  distinct(lat_cell, lon_cell, accepted_name, order, class)
+
+# **CHECK** for duplicates
+qcs_wgt_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Keep the original weight records
+# With an indicator showing the species was actually recorded in the haul
+qcs_wgt_records <- qcs %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
+  mutate(num_record = TRUE)
+
+# Complete haul x species dataset
+qcs_wgt_complete <- qcs_hauls %>%
+  inner_join(
+    qcs_wgt_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    qcs_wgt_records,
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
+    relationship = "many-to-many"
+  ) %>%
+  mutate(
+    # No species record = absence = 0.
+    # Species recorded but number unavailable = NA.
+    wgt_cpue = if_else(
+      is.na(num_record),
+      0,
+      wgt_cpue))
+
+# Calculate the mean
+qcs_wgt_mean_cpue <- qcs_wgt_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_cpue = mean(wgt_cpue, na.rm = TRUE),
+    n_hauls = n(),
+    .groups = "drop")
+
+# **CHECK** Check that any rows with NaN are actually weight-only rows and not
+# rows where data is missing
+qcs_wgt_mean_cpue %>%
+  filter(is.nan(mean_cpue)) %>%
+  select(year, lat_cell, lon_cell, accepted_name) %>%
+  left_join(
+    qcs %>%
+      group_by(year, lat_cell, lon_cell, accepted_name) %>%
+      summarise(
+        n_num = sum(!is.na(num_cpue)),
+        n_weight = sum(!is.na(wgt_cpue)),
+        .groups = "drop"
+      ),
+    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+  ) %>%
+  summarise(
+    n_combinations = n(),
+    all_number_only = all(n_num > 0 & n_weight == 0),
+    n_num_only = sum(n_num > 0 & n_weight == 0),
+    n_neither = sum(n_weight == 0 & n_num == 0),
+    n_with_weight = sum(n_weight > 0)
+  )
+
+# Filter
+unique(qcs_full$class)
+
+qcs_wgt_elasmo_ts <- qcs_wgt_mean_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
+# Final checks
+# For each species and spatial cell, determine whether it
+# ever has positive mean number CPUE.
+
+qcs_num_mean_cpue %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_cpue = max(
+      mean_cpue,
+      na.rm = TRUE),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpue = sum(
+      max_mean_cpue > 0),
+    n_with_zero_only = sum(
+      max_mean_cpue == 0))
+
+qcs_wgt_mean_cpue %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_cpue = max(
+      mean_cpue,
+      na.rm = TRUE),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpue = sum(
+      max_mean_cpue > 0),
+    n_with_zero_only = sum(
+      max_mean_cpue == 0))
+
+# Clean house
 rm(qcs_env)
 rm(qcs_full)
-rm(qcs)
-
+rm(qcs_num_species)
+rm(qcs_num_complete)
+rm(qcs_wgt_species)
+rm(qcs_wgt_records)
+rm(qcs_wgt_complete)
+rm(qcs_num_records)
+rm(qcs_hauls)
 
 #==========================
 # Rockall Plateau (ROCKALL)
 #==========================
 rock_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/ROCKALL_clean.RData", envir = rock_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/ROCKALL_clean.RData",
+     envir = rock_env)
 rock_full <- rock_env$data
 
 rock <- rock_full %>%
@@ -1272,7 +1971,8 @@ rm(rock_complete)
 # Scotian Shelf (SCS)
 #====================
 scs_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/SCS_clean.RData", envir = scs_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/SCS_clean.RData",
+     envir = scs_env)
 scs_full <- scs_env$data
 
 scs <- scs_full %>%
@@ -1358,7 +2058,8 @@ rm(scs_complete)
 # Southeast US (SEUS)
 #=====================
 seus_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/SEUS_clean.RData", envir = seus_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/SEUS_clean.RData",
+     envir = seus_env)
 seus_full <- seus_env$data
 
 seus <- seus_full %>%
@@ -1444,31 +2145,267 @@ rm(seus_complete)
 # Canada, Strait of Georgia (SOG)
 #=================================
 
-# No CPUE measurement
-
 sog_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/SOG_clean.RData", envir = sog_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/SOG_clean.RData",
+     envir = sog_env)
 sog_full <- sog_env$data
 
+# Prepare the dataset
 sog <- sog_full %>%
   ungroup() %>%
   mutate(
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
 
+# Check that no rows are all NAs (and therefore should not be treated as observations)
+# Can also check for whether there are rows which are only e.g. num_cpua as this would 
+# need to be accounted for
+sog %>%
+  filter(
+    is.na(num_cpue) &
+      is.na(num_cpua) &
+      is.na(wgt_cpue) &
+      is.na(wgt_cpua)
+  )
+
+# Check the data structure
+
+# Check for duplicated elasmobranch records
+sog %>%
+  filter(class == "Elasmobranchii") %>%
+  count(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Not elasmobranchs so only matters that there is a record of the survey within grid cell
+
+# Create the haul level dataset
+# Records each sampled haul once
+sog_hauls <- sog %>%
+  distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
+
+# Check each haul only has one row
+sog_hauls %>%
+  count(survey,haul_id) %>%
+  filter(n > 1)
+
+#------------
+# NUMBER DATA
+#------------
+
+# Only species with at least one number observation are included in the number pool
+# A species with only weight is NOT included
+sog_num_species <- sog %>%
+  filter(!is.na(num_cpue)) %>%
+  distinct(lat_cell, lon_cell, accepted_name, order, class)
+
+# **CHECK** for duplicates
+sog_num_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Keep the original number records
+# With an indicator showing the species was actually recorded in the haul
+sog_num_records <- sog %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, num_cpue) %>%
+  mutate(num_record = TRUE)
+
+# Complete haul x species dataset
+sog_num_complete <- sog_hauls %>%
+  inner_join(
+    sog_num_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    sog_num_records,
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
+    relationship = "many-to-many"
+  ) %>%
+  mutate(
+    # No species record = absence = 0.
+    # Species recorded but number unavailable = NA.
+    num_cpue = if_else(
+      is.na(num_record),
+      0,
+      num_cpue))
+
+# Calculate the mean
+sog_num_mean_cpue <- sog_num_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    n_hauls = n(),
+    .groups = "drop")
+
+# **CHECK** Check that any rows with NaN are actually weight-only rows and not
+# rows where data is missing
+sog_num_mean_cpue %>%
+  filter(is.nan(mean_cpue)) %>%
+  select(year, lat_cell, lon_cell, accepted_name) %>%
+  left_join(
+    sog %>%
+      group_by(year, lat_cell, lon_cell, accepted_name) %>%
+      summarise(
+        n_weight = sum(!is.na(wgt_cpue)),
+        n_num = sum(!is.na(num_cpue)),
+        .groups = "drop"
+      ),
+    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+  ) %>%
+  summarise(
+    n_combinations = n(),
+    all_weight_only = all(n_weight > 0 & n_num == 0),
+    n_weight_only = sum(n_weight > 0 & n_num == 0),
+    n_neither = sum(n_weight == 0 & n_num == 0),
+    n_with_number = sum(n_num > 0)
+  )
+
+# Convert NaN values to NA for easier interpretation
+sog_num_mean_cpue <- sog_num_mean_cpue %>%
+  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+
+# Filter
+unique(sog_full$class)
+
+sog_num_elasmo_ts <- sog_num_mean_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
+#------------
+# WEIGHT DATA
+#------------
+
+# Only species with at least one weight observation are included in the number pool
+# A species with only number is NOT included
+sog_wgt_species <- sog %>%
+  filter(!is.na(wgt_cpue)) %>%
+  distinct(lat_cell, lon_cell, accepted_name, order, class)
+
+# **CHECK** for duplicates
+sog_wgt_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Keep the original weight records
+# With an indicator showing the species was actually recorded in the haul
+sog_wgt_records <- sog %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
+  mutate(num_record = TRUE)
+
+# Complete haul x species dataset
+sog_wgt_complete <- sog_hauls %>%
+  inner_join(
+    sog_wgt_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    sog_wgt_records,
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
+    relationship = "many-to-many"
+  ) %>%
+  mutate(
+    # No species record = absence = 0.
+    # Species recorded but number unavailable = NA.
+    wgt_cpue = if_else(
+      is.na(num_record),
+      0,
+      wgt_cpue))
+
+# Calculate the mean
+sog_wgt_mean_cpue <- sog_wgt_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_cpue = mean(wgt_cpue, na.rm = TRUE),
+    n_hauls = n(),
+    .groups = "drop")
+
+# **CHECK** Check that any rows with NaN are actually weight-only rows and not
+# rows where data is missing
+sog_wgt_mean_cpue %>%
+  filter(is.nan(mean_cpue)) %>%
+  select(year, lat_cell, lon_cell, accepted_name) %>%
+  left_join(
+    sog %>%
+      group_by(year, lat_cell, lon_cell, accepted_name) %>%
+      summarise(
+        n_num = sum(!is.na(num_cpue)),
+        n_weight = sum(!is.na(wgt_cpue)),
+        .groups = "drop"
+      ),
+    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+  ) %>%
+  summarise(
+    n_combinations = n(),
+    all_number_only = all(n_num > 0 & n_weight == 0),
+    n_num_only = sum(n_num > 0 & n_weight == 0),
+    n_neither = sum(n_weight == 0 & n_num == 0),
+    n_with_weight = sum(n_weight > 0)
+  )
+
+# Filter
+unique(sog_full$class)
+
+sog_wgt_elasmo_ts <- sog_wgt_mean_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
+# Final checks
+# For each species and spatial cell, determine whether it
+# ever has positive mean number CPUE.
+
+sog_num_mean_cpue %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_cpue = max(
+      mean_cpue,
+      na.rm = TRUE),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpue = sum(
+      max_mean_cpue > 0),
+    n_with_zero_only = sum(
+      max_mean_cpue == 0))
+
+sog_wgt_mean_cpue %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_cpue = max(
+      mean_cpue,
+      na.rm = TRUE),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpue = sum(
+      max_mean_cpue > 0),
+    n_with_zero_only = sum(
+      max_mean_cpue == 0))
+
+# Clean house
 rm(sog_env)
 rm(sog_full)
-rm(sog)
+rm(sog_num_species)
+rm(sog_num_complete)
+rm(sog_wgt_species)
+rm(sog_wgt_records)
+rm(sog_wgt_complete)
+rm(sog_num_records)
+rm(sog_hauls)
 
 
 #========================
 # Gulf of Cadiz (SP-ARSA)
 #========================
 sparsa_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/SP-ARSA_clean.RData", envir = sparsa_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/SP-ARSA_clean.RData",
+     envir = sparsa_env)
 sparsa_full <- sparsa_env$data
 
 sparsa <- sparsa_full %>%
@@ -1554,7 +2491,8 @@ rm(sparsa_complete)
 # North Spain (SP-NORTH)
 #=======================
 spnorth_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/SP-NORTH_clean.RData", envir = spnorth_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/SP-NORTH_clean.RData",
+     envir = spnorth_env)
 spnorth_full <- spnorth_env$data
 
 spnorth <- spnorth_full %>%
@@ -1640,7 +2578,8 @@ rm(spnorth_complete)
 # Porcupine Bank (SP-PORC)
 #=========================
 spporc_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/SP-PORC_clean.RData", envir = spporc_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/SP-PORC_clean.RData",
+     envir = spporc_env)
 spporc_full <- spporc_env$data
 
 spporc <- spporc_full %>%
@@ -1726,7 +2665,8 @@ rm(spporc_complete)
 # Scotland Shelf Sea (SWC-IBTS)
 #==============================
 swc_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/SWC-IBTS_clean.RData", envir = swc_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/SWC-IBTS_clean.RData",
+     envir = swc_env)
 swc_full <- swc_env$data
 
 swc <- swc_full %>%
@@ -1812,7 +2752,8 @@ rm(swc_complete)
 # California Current (Annual) (WCANN)
 #====================================
 wcann_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/WCANN_clean.RData", envir = wcann_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/WCANN_clean.RData",
+     envir = wcann_env)
 wcann_full <- wcann_env$data
 
 wcann <- wcann_full %>%
@@ -1898,31 +2839,278 @@ rm(wcann_complete)
 # Canada, West Coast Haida Gwaii (WCHG)
 #======================================
 
-# No CPUE measurement
-
 wchg_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/WCHG_clean.RData", envir = wchg_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/WCHG_clean.RData",
+     envir = wchg_env)
 wchg_full <- wchg_env$data
 
+# Prepare the dataset
 wchg <- wchg_full %>%
   ungroup() %>%
   mutate(
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
 
+# Check that no rows are all NAs (and therefore should not be treated as observations)
+# Can also check for whether there are rows which are only e.g. num_cpua as this would 
+# need to be accounted for
+wchg %>%
+  filter(
+    is.na(num_cpue) &
+      is.na(num_cpua) &
+      is.na(wgt_cpue) &
+      is.na(wgt_cpua)
+  )
+
+# Check the data structure
+
+# Check for duplicated elasmobranch records
+wchg %>%
+  filter(class == "Elasmobranchii") %>%
+  count(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+wchg %>%
+  filter(
+    class == "Elasmobranchii",
+    survey == "DFO-WCHG",
+    haul_id == "69890-035",
+    year == 2010,
+    accepted_name == "Bathyraja interrupta"
+  )
+
+# Create the haul level dataset
+# Records each sampled haul once
+wchg_hauls <- wchg %>%
+  distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
+
+# Check each haul only has one row
+wchg_hauls %>%
+  count(survey,haul_id) %>%
+  filter(n > 1)
+
+#------------
+# NUMBER DATA
+#------------
+
+# Only species with at least one number observation are included in the number pool
+# A species with only weight is NOT included
+wchg_num_species <- wchg %>%
+  filter(!is.na(num_cpue)) %>%
+  distinct(lat_cell, lon_cell, accepted_name, order, class)
+
+# **CHECK** for duplicates
+wchg_num_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Keep the original number records
+# With an indicator showing the species was actually recorded in the haul
+wchg_num_records <- wchg %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, num_cpue) %>%
+  mutate(num_record = TRUE)
+
+# Complete haul x species dataset
+wchg_num_complete <- wchg_hauls %>%
+  inner_join(
+    wchg_num_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    wchg_num_records,
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
+    relationship = "many-to-many"
+  ) %>%
+  mutate(
+    # No species record = absence = 0.
+    # Species recorded but number unavailable = NA.
+    num_cpue = if_else(
+      is.na(num_record),
+      0,
+      num_cpue))
+
+# Calculate the mean
+wchg_num_mean_cpue <- wchg_num_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    n_hauls = n_distinct(haul_id),  # >>> CHANGE: count unique hauls, not records (because duplicated elasmobranch)
+    .groups = "drop")
+
+# **CHECK** Check that any rows with NaN are actually weight-only rows and not
+# rows where data is missing
+wchg_num_mean_cpue %>%
+  filter(is.nan(mean_cpue)) %>%
+  select(year, lat_cell, lon_cell, accepted_name) %>%
+  left_join(
+    wchg %>%
+      group_by(year, lat_cell, lon_cell, accepted_name) %>%
+      summarise(
+        n_weight = sum(!is.na(wgt_cpue)),
+        n_num = sum(!is.na(num_cpue)),
+        .groups = "drop"
+      ),
+    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+  ) %>%
+  summarise(
+    n_combinations = n(),
+    all_weight_only = all(n_weight > 0 & n_num == 0),
+    n_weight_only = sum(n_weight > 0 & n_num == 0),
+    n_neither = sum(n_weight == 0 & n_num == 0),
+    n_with_number = sum(n_num > 0)
+  )
+
+# Convert NaN values to NA for easier interpretation
+wchg_num_mean_cpue <- wchg_num_mean_cpue %>%
+  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+
+# Filter
+unique(wchg_full$class)
+
+wchg_num_elasmo_ts <- wchg_num_mean_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
+#------------
+# WEIGHT DATA
+#------------
+
+# Only species with at least one weight observation are included in the number pool
+# A species with only number is NOT included
+wchg_wgt_species <- wchg %>%
+  filter(!is.na(wgt_cpue)) %>%
+  distinct(lat_cell, lon_cell, accepted_name, order, class)
+
+# **CHECK** for duplicates
+wchg_wgt_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Keep the original weight records
+# With an indicator showing the species was actually recorded in the haul
+wchg_wgt_records <- wchg %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
+  mutate(wgt_record = TRUE)
+
+# Complete haul x species dataset
+wchg_wgt_complete <- wchg_hauls %>%
+  inner_join(
+    wchg_wgt_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    wchg_wgt_records,
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
+    relationship = "many-to-many"
+  ) %>%
+  mutate(
+    # No species record = absence = 0.
+    # Species recorded but number unavailable = NA.
+    wgt_cpue = if_else(
+      is.na(wgt_record),
+      0,
+      wgt_cpue))
+
+# Calculate the mean
+wchg_wgt_mean_cpue <- wchg_wgt_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_cpue = mean(wgt_cpue, na.rm = TRUE),
+    n_hauls = n_distinct(haul_id),  # >>> CHANGE: count unique hauls, not records
+    .groups = "drop")
+
+# **CHECK** Check that any rows with NaN are actually weight-only rows and not
+# rows where data is missing
+wchg_wgt_mean_cpue %>%
+  filter(is.nan(mean_cpue)) %>%
+  select(year, lat_cell, lon_cell, accepted_name) %>%
+  left_join(
+    wchg %>%
+      group_by(year, lat_cell, lon_cell, accepted_name) %>%
+      summarise(
+        n_num = sum(!is.na(num_cpue)),
+        n_weight = sum(!is.na(wgt_cpue)),
+        .groups = "drop"
+      ),
+    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+  ) %>%
+  summarise(
+    n_combinations = n(),
+    all_number_only = all(n_num > 0 & n_weight == 0),
+    n_num_only = sum(n_num > 0 & n_weight == 0),
+    n_neither = sum(n_weight == 0 & n_num == 0),
+    n_with_weight = sum(n_weight > 0)
+  )
+
+# Convert NaN values to NA for easier interpretation
+wchg_wgt_mean_cpue <- wchg_wgt_mean_cpue %>%
+  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+
+# Filter
+unique(wchg_full$class)
+
+wchg_wgt_elasmo_ts <- wchg_wgt_mean_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
+# Final checks
+# For each species and spatial cell, determine whether it
+# ever has positive mean number CPUE.
+
+wchg_num_mean_cpue %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_cpue = max(
+      mean_cpue,
+      na.rm = TRUE),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpue = sum(
+      max_mean_cpue > 0),
+    n_with_zero_only = sum(
+      max_mean_cpue == 0))
+
+wchg_wgt_mean_cpue %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_cpue = max(
+      mean_cpue,
+      na.rm = TRUE),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpue = sum(
+      max_mean_cpue > 0),
+    n_with_zero_only = sum(
+      max_mean_cpue == 0))
+
+# Clean house
 rm(wchg_env)
 rm(wchg_full)
-rm(wchg)
+rm(wchg_num_species)
+rm(wchg_num_complete)
+rm(wchg_wgt_species)
+rm(wchg_wgt_records)
+rm(wchg_wgt_complete)
+rm(wchg_num_records)
+rm(wchg_hauls)
 
 
 #========================================
 # California Current (Trienniall) (WCTRI)
 #========================================
 wctri_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/WCTRI_clean.RData", envir = wctri_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/WCTRI_clean.RData",
+     envir = wctri_env)
 wctri_full <- wctri_env$data
 
 wctri <- wctri_full %>%
@@ -2008,21 +3196,264 @@ rm(wctri_complete)
 # Canada, West Coast Vancouver Island (WCVI)
 #===========================================
 wcvi_env <- new.env()
-load("/Users/rachelforster/Documents/R code and data/Raw data/WCVI_clean.RData", envir = wcvi_env)
+load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/WCVI_clean.RData",
+     envir = wcvi_env)
 wcvi_full <- wcvi_env$data
 
+# Prepare the dataset
 wcvi <- wcvi_full %>%
   ungroup() %>%
   mutate(
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
 
+# Check that no rows are all NAs (and therefore should not be treated as observations)
+# Can also check for whether there are rows which are only e.g. num_cpua as this would 
+# need to be accounted for
+wcvi %>%
+  filter(
+    is.na(num_cpue) &
+      is.na(num_cpua) &
+      is.na(wgt_cpue) &
+      is.na(wgt_cpua)
+  )
+
+# Check the data structure
+
+# Check for duplicated elasmobranch records
+wcvi %>%
+  filter(class == "Elasmobranchii") %>%
+  count(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Not elasmobranchs so only matters that there is a record of the survey within grid cell
+
+# Create the haul level dataset
+# Records each sampled haul once
+wcvi_hauls <- wcvi %>%
+  distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
+
+# Check each haul only has one row
+wcvi_hauls %>%
+  count(survey,haul_id) %>%
+  filter(n > 1)
+
+#------------
+# NUMBER DATA
+#------------
+
+# Only species with at least one number observation are included in the number pool
+# A species with only weight is NOT included
+wcvi_num_species <- wcvi %>%
+  filter(!is.na(num_cpue)) %>%
+  distinct(lat_cell, lon_cell, accepted_name, order, class)
+
+# **CHECK** for duplicates
+wcvi_num_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Keep the original number records
+# With an indicator showing the species was actually recorded in the haul
+wcvi_num_records <- wcvi %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, num_cpue) %>%
+  mutate(num_record = TRUE)
+
+# Complete haul x species dataset
+wcvi_num_complete <- wcvi_hauls %>%
+  inner_join(
+    wcvi_num_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    wcvi_num_records,
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
+    relationship = "many-to-many"
+  ) %>%
+  mutate(
+    # No species record = absence = 0.
+    # Species recorded but number unavailable = NA.
+    num_cpue = if_else(
+      is.na(num_record),
+      0,
+      num_cpue))
+
+# Calculate the mean
+wcvi_num_mean_cpue <- wcvi_num_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    n_hauls = n(),
+    .groups = "drop")
+
+# **CHECK** Check that any rows with NaN are actually weight-only rows and not
+# rows where data is missing
+wcvi_num_mean_cpue %>%
+  filter(is.nan(mean_cpue)) %>%
+  select(year, lat_cell, lon_cell, accepted_name) %>%
+  left_join(
+    wcvi %>%
+      group_by(year, lat_cell, lon_cell, accepted_name) %>%
+      summarise(
+        n_weight = sum(!is.na(wgt_cpue)),
+        n_num = sum(!is.na(num_cpue)),
+        .groups = "drop"
+      ),
+    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+  ) %>%
+  summarise(
+    n_combinations = n(),
+    all_weight_only = all(n_weight > 0 & n_num == 0),
+    n_weight_only = sum(n_weight > 0 & n_num == 0),
+    n_neither = sum(n_weight == 0 & n_num == 0),
+    n_with_number = sum(n_num > 0)
+  )
+
+# Convert NaN values to NA for easier interpretation
+wcvi_num_mean_cpue <- wcvi_num_mean_cpue %>%
+  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+
+# Filter
+unique(wcvi_full$class)
+
+wcvi_num_elasmo_ts <- wcvi_num_mean_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
+#------------
+# WEIGHT DATA
+#------------
+
+# Only species with at least one weight observation are included in the number pool
+# A species with only number is NOT included
+wcvi_wgt_species <- wcvi %>%
+  filter(!is.na(wgt_cpue)) %>%
+  distinct(lat_cell, lon_cell, accepted_name, order, class)
+
+# **CHECK** for duplicates
+wcvi_wgt_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
+  filter(n > 1)
+
+# Keep the original weight records
+# With an indicator showing the species was actually recorded in the haul
+wcvi_wgt_records <- wcvi %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
+  mutate(num_record = TRUE)
+
+# Complete haul x species dataset
+wcvi_wgt_complete <- wcvi_hauls %>%
+  inner_join(
+    wcvi_wgt_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    wcvi_wgt_records,
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
+    relationship = "many-to-many"
+  ) %>%
+  mutate(
+    # No species record = absence = 0.
+    # Species recorded but number unavailable = NA.
+    wgt_cpue = if_else(
+      is.na(num_record),
+      0,
+      wgt_cpue))
+
+# Calculate the mean
+wcvi_wgt_mean_cpue <- wcvi_wgt_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_cpue = mean(wgt_cpue, na.rm = TRUE),
+    n_hauls = n(),
+    .groups = "drop")
+
+# **CHECK** Check that any rows with NaN are actually weight-only rows and not
+# rows where data is missing
+wcvi_wgt_mean_cpue %>%
+  filter(is.nan(mean_cpue)) %>%
+  select(year, lat_cell, lon_cell, accepted_name) %>%
+  left_join(
+    wcvi %>%
+      group_by(year, lat_cell, lon_cell, accepted_name) %>%
+      summarise(
+        n_num = sum(!is.na(num_cpue)),
+        n_weight = sum(!is.na(wgt_cpue)),
+        .groups = "drop"
+      ),
+    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+  ) %>%
+  summarise(
+    n_combinations = n(),
+    all_number_only = all(n_num > 0 & n_weight == 0),
+    n_num_only = sum(n_num > 0 & n_weight == 0),
+    n_neither = sum(n_weight == 0 & n_num == 0),
+    n_with_weight = sum(n_weight > 0)
+  )
+
+# Convert NaN values to NA for easier interpretation
+wcvi_wgt_mean_cpue <- wcvi_wgt_mean_cpue %>%
+  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+
+# Filter
+unique(wcvi_full$class)
+
+wcvi_wgt_elasmo_ts <- wcvi_wgt_mean_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
+# Final checks
+# For each species and spatial cell, determine whether it
+# ever has positive mean number CPUE.
+
+wcvi_num_mean_cpue %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_cpue = max(
+      mean_cpue,
+      na.rm = TRUE),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpue = sum(
+      max_mean_cpue > 0),
+    n_with_zero_only = sum(
+      max_mean_cpue == 0))
+
+wcvi_wgt_mean_cpue %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_cpue = max(
+      mean_cpue,
+      na.rm = TRUE),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpue = sum(
+      max_mean_cpue > 0),
+    n_with_zero_only = sum(
+      max_mean_cpue == 0))
+
+# Clean house
 rm(wcvi_env)
 rm(wcvi_full)
-rm(wcvi)
+rm(wcvi_num_species)
+rm(wcvi_num_complete)
+rm(wcvi_wgt_species)
+rm(wcvi_wgt_records)
+rm(wcvi_wgt_complete)
+rm(wcvi_num_records)
+rm(wcvi_hauls)
+
+
 
 
 #==================
