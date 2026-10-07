@@ -14,9 +14,14 @@ library(rnaturalearthdata)
 library(broom)
 
 # Loading timeseries
-fishglob_ts <- read.csv("Fishglob_timeseries.csv")
-biotime_ts <- read.csv("Biotime_timeseries.csv")
-IMOS_ts <- read.csv("IMOS_timeseries.csv")
+fishglob_ts <- read.csv("Fishglob_timeseries.csv") %>%
+  mutate(database = "FishGLOB")
+biotime_ts <- read.csv("Biotime_timeseries.csv") %>%
+  mutate(database = "BioTIME")
+IMOS_ts <- read.csv("IMOS_timeseries.csv") %>%
+  mutate(database = "IMOS")
+timefish_ts <- read.csv("TimeFISH_timeseries.csv") %>%
+  mutate(database = "TimeFISH")
 
 #============================
 # Map with surveyed locations
@@ -28,7 +33,7 @@ world <- ne_countries(
   returnclass = "sf")
 
 # Creating a dataframe with each lat cell and lon cell combination which has been surveyed
-surveyed_cells <- bind_rows(fishglob_ts, biotime_ts, IMOS_ts) %>%
+surveyed_cells <- bind_rows(fishglob_ts, biotime_ts, IMOS_ts, timefish_ts) %>%
   distinct(lat_cell, lon_cell)
 
 # Turning this into geographic polygons

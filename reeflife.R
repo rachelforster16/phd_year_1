@@ -45,7 +45,7 @@ IMOS_reef %>%
   count(FID) %>%
   filter(n > 1)
 
-# Make variable names consistent and add species data
+# Make variable names consistent
 IMOS_reef <- IMOS_reef %>%
   rename(accepted_name = species_name, num_cpue = total, haul_id = FID) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, num_cpue, accepted_name,
@@ -110,7 +110,7 @@ IMOS_reef_observed <- IMOS_reef %>%
 
 
 # Now calculate mean_cpue of all events in a grid square, per species, per year, per survey
-IMOS_reef_mean_cpue <- IMOS_reef_species %>%
+IMOS_reef_mean_num_cpue <- IMOS_reef_species %>%
   inner_join(
     IMOS_reef_hauls_year,
     by = c("lat_cell", "lon_cell"),
@@ -130,27 +130,27 @@ IMOS_reef_mean_cpue <- IMOS_reef_species %>%
   ) %>%
   mutate(
     sum_cpue = replace_na(sum_cpue, 0),
-    mean_cpue = sum_cpue / n_hauls
+    mean_num_cpue = sum_cpue / n_hauls
   ) %>%
-  select(survey, year, lat_cell, lon_cell, accepted_name, order, class, mean_cpue, n_hauls)
+  select(survey, year, lat_cell, lon_cell, accepted_name, order, class, mean_num_cpue, n_hauls)
 
 
 # **CHECK** Every species/grid cell combination has >1 positive combination
-IMOS_reef_mean_cpue %>%
+IMOS_reef_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 # Filter for chondrichthyes (elasmobranchii and holocephali/chimaeriformes)
-unique(IMOS_reef_mean_cpue$class)
+unique(IMOS_reef_mean_num_cpue$class)
 
-IMOS_reef_elasmo_ts <- IMOS_reef_mean_cpue %>%
+IMOS_reef_elasmo_ts <- IMOS_reef_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii"))
 
 # Clean house
@@ -242,30 +242,30 @@ IMOS_crypto_complete <- IMOS_crypto_hauls %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
 # Now calculate mean_cpue of all events in a grid square, per species, per year, per survey
-IMOS_crypto_mean_cpue <- IMOS_crypto_complete %>%
+IMOS_crypto_mean_num_cpue <- IMOS_crypto_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK** Every species/grid cell combination has >1 positive combination
-IMOS_crypto_mean_cpue %>%
+IMOS_crypto_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 # Filter for chondrichthyes (elasmobranchii and holocephali/chimaeriformes)
 unique(IMOS_crypto$class)
 
-IMOS_crypto_elasmo_ts <- IMOS_crypto_mean_cpue %>%
+IMOS_crypto_elasmo_ts <- IMOS_crypto_mean_num_cpue %>%
   filter(class %in% c("Chondrichthyes"))
 
 # Clean house

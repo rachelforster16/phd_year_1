@@ -125,7 +125,7 @@ rm(tf_species)
 rm(tf_hauls)
 rm(tf_complete)
 
-
+write.csv(tf_elasmo_ts, "TimeFISH_timeseries.csv")
 
 
 
