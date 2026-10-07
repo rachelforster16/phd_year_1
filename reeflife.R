@@ -17,7 +17,7 @@ library(broom)
 taxonomy_lookup <- read.csv("taxonomy_lookup.csv")
 
 #=========================================
-# IMOS Global Cryptobenthic Fish Abundance
+# IMOS Global Reef Fish Abundance
 #=========================================
 IMOS_reef_full <- read.csv('IMOS_reef.csv', header = T, sep = ',', skip = 71)
 

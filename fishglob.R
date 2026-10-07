@@ -77,7 +77,7 @@ ai_complete <- ai_hauls %>%
   # Any missing observations become zero
   mutate(wgt_cpua = replace_na(wgt_cpua, 0))
 
-# Now calculate mean_cpue of all events in a grid square, per species, per year, per survey
+# Now calculate mean_cpua of all events in a grid square, per species, per year, per survey
 ai_mean_wgt_cpua <- ai_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
@@ -176,30 +176,30 @@ left_join(
 mutate(num_cpue = replace_na(num_cpue, 0))
 
 # Now calculate mean_cpue of all events in a grid square, per species, per year, per survey
-bits_mean_cpue <- bits_complete %>%
+bits_mean_num_cpue <- bits_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK** Every species/grid cell combination has >1 positive combination
-bits_mean_cpue %>%
+bits_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 # Filter for chondrichthyes (elasmobranchii and holocephali/chimaeriformes)
 unique(bits_full$class)
 
-bits_elasmo_ts <- bits_mean_cpue %>%
+bits_elasmo_ts <- bits_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii"))
 
 # Clean house
@@ -213,7 +213,6 @@ rm(bits_complete)
 #=========================
 # Eastern Bering Sea (EBS)
 #=========================
-
 ebs_env <- new.env()
 load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/EBS_clean.RData",
      envir = ebs_env)
@@ -359,30 +358,30 @@ evhoe_complete <- evhoe_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-evhoe_mean_cpue <- evhoe_complete %>%
+evhoe_mean_num_cpue <- evhoe_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-evhoe_mean_cpue %>%
+evhoe_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(evhoe_full$class)
 
-evhoe_elasmo_ts <- evhoe_mean_cpue %>%
+evhoe_elasmo_ts <- evhoe_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(evhoe_env)
@@ -446,30 +445,30 @@ fr_complete <- fr_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-fr_mean_cpue <- fr_complete %>%
+fr_mean_num_cpue <- fr_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-fr_mean_cpue %>%
+fr_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(fr_full$class)
 
-fr_elasmo_ts <- fr_mean_cpue %>%
+fr_elasmo_ts <- fr_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii"))
 
 rm(fr_env)
@@ -533,30 +532,30 @@ gmex_complete <- gmex_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-gmex_mean_cpue <- gmex_complete %>%
+gmex_mean_num_cpue <- gmex_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-gmex_mean_cpue %>%
+gmex_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(gmex_full$class)
 
-gmex_elasmo_ts <- gmex_mean_cpue %>%
+gmex_elasmo_ts <- gmex_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii"))
 
 rm(gmex_env)
@@ -569,7 +568,6 @@ rm(gmex_complete)
 #=====================
 # Gulf of Alaska (GOA)
 #=====================
-
 goa_env <- new.env()
 load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/GOA_clean.RData",
      envir = goa_env)
@@ -720,30 +718,30 @@ gsln_complete <- gsln_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-gsln_mean_cpue <- gsln_complete %>%
+gsln_mean_num_cpue <- gsln_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-gsln_mean_cpue %>%
+gsln_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(gsln_full$class)
 
-gsln_elasmo_ts <- gsln_mean_cpue %>%
+gsln_elasmo_ts <- gsln_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii"))
 
 rm(gsln_env)
@@ -807,30 +805,30 @@ gsls_complete <- gsls_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-gsls_mean_cpue <- gsls_complete %>%
+gsls_mean_num_cpue <- gsls_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-gsls_mean_cpue %>%
+gsls_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(gsls_full$class)
 
-gsls_elasmo_ts <- gsls_mean_cpue %>%
+gsls_elasmo_ts <- gsls_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii"))
 
 rm(gsls_env)
@@ -903,7 +901,7 @@ hs_num_species <- hs %>%
   distinct(lat_cell, lon_cell, accepted_name, order, class)
 
 # **CHECK** for duplicates
-hs_num__species %>%
+hs_num_species %>%
   count(lat_cell, lon_cell, accepted_name, order, class) %>%
   filter(n > 1)
 
@@ -934,17 +932,17 @@ hs_num_complete <- hs_hauls %>%
       num_cpue))
 
 # Calculate the mean
-hs_num_mean_cpue <- hs_num_complete %>%
+hs_mean_num_cpue <- hs_num_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
-    n_hauls = n(),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
+    n_hauls = n_distinct(haul_id),
     .groups = "drop")
 
 # **CHECK** Check that any rows with NaN are actually weight-only rows and not
 # rows where data is missing
-hs_num_mean_cpue %>%
-  filter(is.nan(mean_cpue)) %>%
+hs_mean_num_cpue %>%
+  filter(is.nan(mean_num_cpue)) %>%
   select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     hs %>%
@@ -965,13 +963,13 @@ hs_num_mean_cpue %>%
   )
 
 # Convert NaN values to NA for easier interpretation
-hs_num_mean_cpue <- hs_num_mean_cpue %>%
-  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+hs_mean_num_cpue <- hs_mean_num_cpue %>%
+  mutate(mean_num_cpue = if_else(is.nan(mean_num_cpue), NA_real_, mean_num_cpue))
 
 # Filter
 unique(hs_full$class)
 
-hs_num_elasmo_ts <- hs_num_mean_cpue %>%
+hs_num_elasmo_ts <- hs_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 #------------
@@ -993,7 +991,7 @@ hs_wgt_species %>%
 # With an indicator showing the species was actually recorded in the haul
 hs_wgt_records <- hs %>%
   select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
-  mutate(num_record = TRUE)
+  mutate(wgt_record = TRUE)
 
 # Complete haul x species dataset
 hs_wgt_complete <- hs_hauls %>%
@@ -1011,22 +1009,22 @@ hs_wgt_complete <- hs_hauls %>%
     # No species record = absence = 0.
     # Species recorded but number unavailable = NA.
     wgt_cpue = if_else(
-      is.na(num_record),
+      is.na(wgt_record),
       0,
       wgt_cpue))
 
 # Calculate the mean
-hs_wgt_mean_cpue <- hs_wgt_complete %>%
+hs_mean_wgt_cpue <- hs_wgt_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(wgt_cpue, na.rm = TRUE),
-    n_hauls = n(),
+    mean_wgt_cpue = mean(wgt_cpue, na.rm = TRUE),
+    n_hauls = n_distinct(haul_id),
     .groups = "drop")
 
 # **CHECK** Check that any rows with NaN are actually weight-only rows and not
 # rows where data is missing
-hs_wgt_mean_cpue %>%
-  filter(is.nan(mean_cpue)) %>%
+hs_mean_wgt_cpue %>%
+  filter(is.nan(mean_wgt_cpue)) %>%
   select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     hs %>%
@@ -1047,46 +1045,46 @@ hs_wgt_mean_cpue %>%
   )
 
 # Convert NaN values to NA for easier interpretation
-hs_wgt_mean_cpue <- hs_wgt_mean_cpue %>%
-  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+hs_mean_wgt_cpue <- hs_mean_wgt_cpue %>%
+  mutate(mean_wgt_cpue = if_else(is.nan(mean_wgt_cpue), NA_real_, mean_wgt_cpue))
 
 # Filter
 unique(hs_full$class)
 
-hs_wgt_elasmo_ts <- hs_wgt_mean_cpue %>%
+hs_wgt_elasmo_ts <- hs_mean_wgt_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 # Final checks
 # For each species and spatial cell, determine whether it
 # ever has positive mean number CPUE.
 
-hs_num_mean_cpue %>%
+hs_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(
-      mean_cpue,
+    max_mean_num_cpue = max(
+      mean_num_cpue,
       na.rm = TRUE),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
     n_with_positive_cpue = sum(
-      max_mean_cpue > 0),
+      max_mean_num_cpue > 0),
     n_with_zero_only = sum(
-      max_mean_cpue == 0))
+      max_mean_num_cpue == 0))
 
-hs_wgt_mean_cpue %>%
+hs_mean_wgt_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(
-      mean_cpue,
+    max_mean_wgt_cpue = max(
+      mean_wgt_cpue,
       na.rm = TRUE),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
     n_with_positive_cpue = sum(
-      max_mean_cpue > 0),
+      max_mean_wgt_cpue > 0),
     n_with_zero_only = sum(
-      max_mean_cpue == 0))
+      max_mean_wgt_cpue == 0))
 
 # Clean house
 rm(hs_env)
@@ -1096,7 +1094,7 @@ rm(hs_num_complete)
 rm(hs_wgt_species)
 rm(hs_wgt_records)
 rm(hs_wgt_complete)
-rm(hs_species_records)
+rm(hs_num_records)
 rm(hs_hauls)
 
 
@@ -1154,30 +1152,30 @@ ie_complete <- ie_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-ie_mean_cpue <- ie_complete %>%
+ie_mean_num_cpue <- ie_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-ie_mean_cpue %>%
+ie_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(ie_full$class)
 
-ie_elasmo_ts <- ie_mean_cpue %>%
+ie_elasmo_ts <- ie_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(ie_env)
@@ -1241,30 +1239,30 @@ neus_complete <- neus_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-neus_mean_cpue <- neus_complete %>%
+neus_mean_num_cpue <- neus_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-neus_mean_cpue %>%
+neus_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(neus_full$class)
 
-neus_elasmo_ts <- neus_mean_cpue %>%
+neus_elasmo_ts <- neus_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii"))
 
 rm(neus_env)
@@ -1328,30 +1326,30 @@ nigfs_complete <- nigfs_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-nigfs_mean_cpue <- nigfs_complete %>%
+nigfs_mean_num_cpue <- nigfs_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-nigfs_mean_cpue %>%
+nigfs_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(nigfs_full$class)
 
-nigfs_elasmo_ts <- nigfs_mean_cpue %>%
+nigfs_elasmo_ts <- nigfs_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii"))
 
 rm(nigfs_env)
@@ -1415,30 +1413,30 @@ nor_complete <- nor_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-nor_mean_cpue <- nor_complete %>%
+nor_mean_num_cpue <- nor_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-nor_mean_cpue %>%
+nor_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(nor_full$class)
 
-nor_elasmo_ts <- nor_mean_cpue %>%
+nor_elasmo_ts <- nor_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(nor_env)
@@ -1502,30 +1500,30 @@ ns_complete <- ns_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-ns_mean_cpue <- ns_complete %>%
+ns_mean_num_cpue <- ns_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-ns_mean_cpue %>%
+ns_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(ns_full$class)
 
-ns_elasmo_ts <- ns_mean_cpue %>%
+ns_elasmo_ts <- ns_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(ns_env)
@@ -1589,30 +1587,30 @@ pt_complete <- pt_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-pt_mean_cpue <- pt_complete %>%
+pt_mean_num_cpue <- pt_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-pt_mean_cpue %>%
+pt_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(pt_full$class)
 
-pt_elasmo_ts <- pt_mean_cpue %>%
+pt_elasmo_ts <- pt_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(pt_env)
@@ -1625,7 +1623,6 @@ rm(pt_complete)
 #==============================
 # Canada, Queen Charlotte (QCS)
 #==============================
-
 qcs_env <- new.env()
 load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/QCS_clean.RData",
      envir = qcs_env)
@@ -1719,17 +1716,17 @@ qcs_num_complete <- qcs_hauls %>%
       num_cpue))
 
 # Calculate the mean
-qcs_num_mean_cpue <- qcs_num_complete %>%
+qcs_mean_num_cpue <- qcs_num_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
-    n_hauls = n(),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
+    n_hauls = n_distinct(haul_id),
     .groups = "drop")
 
 # **CHECK** Check that any rows with NaN are actually weight-only rows and not
 # rows where data is missing
-qcs_num_mean_cpue %>%
-  filter(is.nan(mean_cpue)) %>%
+qcs_mean_num_cpue %>%
+  filter(is.nan(mean_num_cpue)) %>%
   select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     qcs %>%
@@ -1750,13 +1747,13 @@ qcs_num_mean_cpue %>%
   )
 
 # Convert NaN values to NA for easier interpretation
-qcs_num_mean_cpue <- qcs_num_mean_cpue %>%
-  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+qcs_mean_num_cpue <- qcs_mean_num_cpue %>%
+  mutate(mean_num_cpue = if_else(is.nan(mean_num_cpue), NA_real_, mean_num_cpue))
 
 # Filter
 unique(qcs_full$class)
 
-qcs_num_elasmo_ts <- qcs_num_mean_cpue %>%
+qcs_num_elasmo_ts <- qcs_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 #------------
@@ -1778,7 +1775,7 @@ qcs_wgt_species %>%
 # With an indicator showing the species was actually recorded in the haul
 qcs_wgt_records <- qcs %>%
   select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
-  mutate(num_record = TRUE)
+  mutate(wgt_record = TRUE)
 
 # Complete haul x species dataset
 qcs_wgt_complete <- qcs_hauls %>%
@@ -1796,22 +1793,22 @@ qcs_wgt_complete <- qcs_hauls %>%
     # No species record = absence = 0.
     # Species recorded but number unavailable = NA.
     wgt_cpue = if_else(
-      is.na(num_record),
+      is.na(wgt_record),
       0,
       wgt_cpue))
 
 # Calculate the mean
-qcs_wgt_mean_cpue <- qcs_wgt_complete %>%
+qcs_mean_wgt_cpue <- qcs_wgt_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(wgt_cpue, na.rm = TRUE),
-    n_hauls = n(),
+    mean_wgt_cpue = mean(wgt_cpue, na.rm = TRUE),
+    n_hauls = n_distinct(haul_id),
     .groups = "drop")
 
 # **CHECK** Check that any rows with NaN are actually weight-only rows and not
 # rows where data is missing
-qcs_wgt_mean_cpue %>%
-  filter(is.nan(mean_cpue)) %>%
+qcs_mean_wgt_cpue %>%
+  filter(is.nan(mean_wgt_cpue)) %>%
   select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     qcs %>%
@@ -1834,40 +1831,40 @@ qcs_wgt_mean_cpue %>%
 # Filter
 unique(qcs_full$class)
 
-qcs_wgt_elasmo_ts <- qcs_wgt_mean_cpue %>%
+qcs_wgt_elasmo_ts <- qcs_mean_wgt_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 # Final checks
 # For each species and spatial cell, determine whether it
 # ever has positive mean number CPUE.
 
-qcs_num_mean_cpue %>%
+qcs_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(
-      mean_cpue,
+    max_mean_num_cpue = max(
+      mean_num_cpue,
       na.rm = TRUE),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
     n_with_positive_cpue = sum(
-      max_mean_cpue > 0),
+      max_mean_num_cpue > 0),
     n_with_zero_only = sum(
-      max_mean_cpue == 0))
+      max_mean_num_cpue == 0))
 
-qcs_wgt_mean_cpue %>%
+qcs_mean_wgt_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(
-      mean_cpue,
+    max_mean_wgt_cpue = max(
+      mean_wgt_cpue,
       na.rm = TRUE),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
     n_with_positive_cpue = sum(
-      max_mean_cpue > 0),
+      max_mean_wgt_cpue > 0),
     n_with_zero_only = sum(
-      max_mean_cpue == 0))
+      max_mean_wgt_cpue == 0))
 
 # Clean house
 rm(qcs_env)
@@ -1934,30 +1931,30 @@ rock_complete <- rock_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-rock_mean_cpue <- rock_complete %>%
+rock_mean_num_cpue <- rock_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-rock_mean_cpue %>%
+rock_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(rock_full$class)
 
-rock_elasmo_ts <- rock_mean_cpue %>%
+rock_elasmo_ts <- rock_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(rock_env)
@@ -2021,30 +2018,30 @@ scs_complete <- scs_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-scs_mean_cpue <- scs_complete %>%
+scs_mean_num_cpue <- scs_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-scs_mean_cpue %>%
+scs_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(scs_full$class)
 
-scs_elasmo_ts <- scs_mean_cpue %>%
+scs_elasmo_ts <- scs_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(scs_env)
@@ -2108,30 +2105,30 @@ seus_complete <- seus_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-seus_mean_cpue <- seus_complete %>%
+seus_mean_num_cpue <- seus_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-seus_mean_cpue %>%
+seus_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(seus_full$class)
 
-seus_elasmo_ts <- seus_mean_cpue %>%
+seus_elasmo_ts <- seus_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii"))
 
 rm(seus_env)
@@ -2144,7 +2141,6 @@ rm(seus_complete)
 #=================================
 # Canada, Strait of Georgia (SOG)
 #=================================
-
 sog_env <- new.env()
 load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/SOG_clean.RData",
      envir = sog_env)
@@ -2238,17 +2234,17 @@ sog_num_complete <- sog_hauls %>%
       num_cpue))
 
 # Calculate the mean
-sog_num_mean_cpue <- sog_num_complete %>%
+sog_mean_num_cpue <- sog_num_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
-    n_hauls = n(),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
+    n_hauls = n_distinct(haul_id),
     .groups = "drop")
 
 # **CHECK** Check that any rows with NaN are actually weight-only rows and not
 # rows where data is missing
-sog_num_mean_cpue %>%
-  filter(is.nan(mean_cpue)) %>%
+sog_mean_num_cpue %>%
+  filter(is.nan(mean_num_cpue)) %>%
   select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     sog %>%
@@ -2269,13 +2265,13 @@ sog_num_mean_cpue %>%
   )
 
 # Convert NaN values to NA for easier interpretation
-sog_num_mean_cpue <- sog_num_mean_cpue %>%
-  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+sog_mean_num__cpue <- sog_mean_num_cpue %>%
+  mutate(mean_num_cpue = if_else(is.nan(mean_num_cpue), NA_real_, mean_num_cpue))
 
 # Filter
 unique(sog_full$class)
 
-sog_num_elasmo_ts <- sog_num_mean_cpue %>%
+sog_num_elasmo_ts <- sog_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 #------------
@@ -2297,7 +2293,7 @@ sog_wgt_species %>%
 # With an indicator showing the species was actually recorded in the haul
 sog_wgt_records <- sog %>%
   select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
-  mutate(num_record = TRUE)
+  mutate(wgt_record = TRUE)
 
 # Complete haul x species dataset
 sog_wgt_complete <- sog_hauls %>%
@@ -2315,22 +2311,22 @@ sog_wgt_complete <- sog_hauls %>%
     # No species record = absence = 0.
     # Species recorded but number unavailable = NA.
     wgt_cpue = if_else(
-      is.na(num_record),
+      is.na(wgt_record),
       0,
       wgt_cpue))
 
 # Calculate the mean
-sog_wgt_mean_cpue <- sog_wgt_complete %>%
+sog_mean_wgt_cpue <- sog_wgt_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(wgt_cpue, na.rm = TRUE),
-    n_hauls = n(),
+    mean_wgt_cpue = mean(wgt_cpue, na.rm = TRUE),
+    n_hauls = n_distinct(haul_id),
     .groups = "drop")
 
 # **CHECK** Check that any rows with NaN are actually weight-only rows and not
 # rows where data is missing
-sog_wgt_mean_cpue %>%
-  filter(is.nan(mean_cpue)) %>%
+sog_mean_wgt_cpue %>%
+  filter(is.nan(mean_wgt_cpue)) %>%
   select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     sog %>%
@@ -2353,40 +2349,40 @@ sog_wgt_mean_cpue %>%
 # Filter
 unique(sog_full$class)
 
-sog_wgt_elasmo_ts <- sog_wgt_mean_cpue %>%
+sog_wgt_elasmo_ts <- sog_mean_wgt_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 # Final checks
 # For each species and spatial cell, determine whether it
 # ever has positive mean number CPUE.
 
-sog_num_mean_cpue %>%
+sog_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(
-      mean_cpue,
+    max_mean_num_cpue = max(
+      mean_num_cpue,
       na.rm = TRUE),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
     n_with_positive_cpue = sum(
-      max_mean_cpue > 0),
+      max_mean_num_cpue > 0),
     n_with_zero_only = sum(
-      max_mean_cpue == 0))
+      max_mean_num_cpue == 0))
 
-sog_wgt_mean_cpue %>%
+sog_mean_wgt_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(
-      mean_cpue,
+    max_mean_wgt_cpue = max(
+      mean_wgt_cpue,
       na.rm = TRUE),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
     n_with_positive_cpue = sum(
-      max_mean_cpue > 0),
+      max_mean_wgt_cpue > 0),
     n_with_zero_only = sum(
-      max_mean_cpue == 0))
+      max_mean_wgt_cpue == 0))
 
 # Clean house
 rm(sog_env)
@@ -2454,30 +2450,30 @@ sparsa_complete <- sparsa_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-sparsa_mean_cpue <- sparsa_complete %>%
+sparsa_mean_num_cpue <- sparsa_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-sparsa_mean_cpue %>%
+sparsa_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(sparsa_full$class)
 
-sparsa_elasmo_ts <- sparsa_mean_cpue %>%
+sparsa_elasmo_ts <- sparsa_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(sparsa_env)
@@ -2541,30 +2537,30 @@ spnorth_complete <- spnorth_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-spnorth_mean_cpue <- spnorth_complete %>%
+spnorth_mean_num_cpue <- spnorth_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-spnorth_mean_cpue %>%
+spnorth_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(spnorth_full$class)
 
-spnorth_elasmo_ts <- spnorth_mean_cpue %>%
+spnorth_elasmo_ts <- spnorth_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(spnorth_env)
@@ -2628,30 +2624,30 @@ spporc_complete <- spporc_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-spporc_mean_cpue <- spporc_complete %>%
+spporc_mean_num_cpue <- spporc_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-spporc_mean_cpue %>%
+spporc_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(spporc_full$class)
 
-spporc_elasmo_ts <- spporc_mean_cpue %>%
+spporc_elasmo_ts <- spporc_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(spporc_env)
@@ -2715,30 +2711,30 @@ swc_complete <- swc_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-swc_mean_cpue <- swc_complete %>%
+swc_mean_num_cpue <- swc_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-swc_mean_cpue %>%
+swc_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(swc_full$class)
 
-swc_elasmo_ts <- swc_mean_cpue %>%
+swc_elasmo_ts <- swc_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(swc_env)
@@ -2802,30 +2798,30 @@ wcann_complete <- wcann_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-wcann_mean_cpue <- wcann_complete %>%
+wcann_mean_num_cpue <- wcann_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-wcann_mean_cpue %>%
+wcann_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(wcann_full$class)
 
-wcann_elasmo_ts <- wcann_mean_cpue %>%
+wcann_elasmo_ts <- wcann_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(wcann_env)
@@ -2838,7 +2834,6 @@ rm(wcann_complete)
 #======================================
 # Canada, West Coast Haida Gwaii (WCHG)
 #======================================
-
 wchg_env <- new.env()
 load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/WCHG_clean.RData",
      envir = wchg_env)
@@ -2939,17 +2934,17 @@ wchg_num_complete <- wchg_hauls %>%
       num_cpue))
 
 # Calculate the mean
-wchg_num_mean_cpue <- wchg_num_complete %>%
+wchg_mean_num_cpue <- wchg_num_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n_distinct(haul_id),  # >>> CHANGE: count unique hauls, not records (because duplicated elasmobranch)
     .groups = "drop")
 
 # **CHECK** Check that any rows with NaN are actually weight-only rows and not
 # rows where data is missing
-wchg_num_mean_cpue %>%
-  filter(is.nan(mean_cpue)) %>%
+wchg_mean_num_cpue %>%
+  filter(is.nan(mean_num_cpue)) %>%
   select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     wchg %>%
@@ -2970,13 +2965,13 @@ wchg_num_mean_cpue %>%
   )
 
 # Convert NaN values to NA for easier interpretation
-wchg_num_mean_cpue <- wchg_num_mean_cpue %>%
-  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+wchg_mean_num_cpue <- wchg_mean_num_cpue %>%
+  mutate(mean_num_cpue = if_else(is.nan(mean_num_cpue), NA_real_, mean_num_cpue))
 
 # Filter
 unique(wchg_full$class)
 
-wchg_num_elasmo_ts <- wchg_num_mean_cpue %>%
+wchg_num_elasmo_ts <- wchg_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 #------------
@@ -3021,17 +3016,17 @@ wchg_wgt_complete <- wchg_hauls %>%
       wgt_cpue))
 
 # Calculate the mean
-wchg_wgt_mean_cpue <- wchg_wgt_complete %>%
+wchg_mean_wgt_cpue <- wchg_wgt_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(wgt_cpue, na.rm = TRUE),
+    mean_wgt_cpue = mean(wgt_cpue, na.rm = TRUE),
     n_hauls = n_distinct(haul_id),  # >>> CHANGE: count unique hauls, not records
     .groups = "drop")
 
 # **CHECK** Check that any rows with NaN are actually weight-only rows and not
 # rows where data is missing
-wchg_wgt_mean_cpue %>%
-  filter(is.nan(mean_cpue)) %>%
+wchg_mean_wgt_cpue %>%
+  filter(is.nan(mean_wgt_cpue)) %>%
   select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     wchg %>%
@@ -3052,46 +3047,46 @@ wchg_wgt_mean_cpue %>%
   )
 
 # Convert NaN values to NA for easier interpretation
-wchg_wgt_mean_cpue <- wchg_wgt_mean_cpue %>%
-  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+wchg_mean_wgt_cpue <- wchg_mean_wgt_cpue %>%
+  mutate(mean_wgt_cpue = if_else(is.nan(mean_wgt_cpue), NA_real_, mean_wgt_cpue))
 
 # Filter
 unique(wchg_full$class)
 
-wchg_wgt_elasmo_ts <- wchg_wgt_mean_cpue %>%
+wchg_wgt_elasmo_ts <- wchg_mean_wgt_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 # Final checks
 # For each species and spatial cell, determine whether it
 # ever has positive mean number CPUE.
 
-wchg_num_mean_cpue %>%
+wchg_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(
-      mean_cpue,
+    max_mean_num_cpue = max(
+      mean_num_cpue,
       na.rm = TRUE),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
     n_with_positive_cpue = sum(
-      max_mean_cpue > 0),
+      max_mean_num_cpue > 0),
     n_with_zero_only = sum(
-      max_mean_cpue == 0))
+      max_mean_num_cpue == 0))
 
-wchg_wgt_mean_cpue %>%
+wchg_mean_wgt_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(
-      mean_cpue,
+    max_mean_wgt_cpue = max(
+      mean_wgt_cpue,
       na.rm = TRUE),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
     n_with_positive_cpue = sum(
-      max_mean_cpue > 0),
+      max_mean_wgt_cpue > 0),
     n_with_zero_only = sum(
-      max_mean_cpue == 0))
+      max_mean_wgt_cpue == 0))
 
 # Clean house
 rm(wchg_env)
@@ -3159,30 +3154,30 @@ wctri_complete <- wctri_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-wctri_mean_cpue <- wctri_complete %>%
+wctri_mean_num_cpue <- wctri_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-wctri_mean_cpue %>%
+wctri_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 
 unique(wctri_full$class)
 
-wctri_elasmo_ts <- wctri_mean_cpue %>%
+wctri_elasmo_ts <- wctri_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(wctri_env)
@@ -3288,17 +3283,17 @@ wcvi_num_complete <- wcvi_hauls %>%
       num_cpue))
 
 # Calculate the mean
-wcvi_num_mean_cpue <- wcvi_num_complete %>%
+wcvi_mean_num_cpue <- wcvi_num_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
-    n_hauls = n(),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
+    n_hauls = n_distinct(haul_id),
     .groups = "drop")
 
 # **CHECK** Check that any rows with NaN are actually weight-only rows and not
 # rows where data is missing
-wcvi_num_mean_cpue %>%
-  filter(is.nan(mean_cpue)) %>%
+wcvi_mean_num_cpue %>%
+  filter(is.nan(mean_num_cpue)) %>%
   select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     wcvi %>%
@@ -3319,13 +3314,13 @@ wcvi_num_mean_cpue %>%
   )
 
 # Convert NaN values to NA for easier interpretation
-wcvi_num_mean_cpue <- wcvi_num_mean_cpue %>%
-  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+wcvi_mean_num_cpue <- wcvi_mean_num_cpue %>%
+  mutate(mean_num_cpue = if_else(is.nan(mean_num_cpue), NA_real_, mean_num_cpue))
 
 # Filter
 unique(wcvi_full$class)
 
-wcvi_num_elasmo_ts <- wcvi_num_mean_cpue %>%
+wcvi_num_elasmo_ts <- wcvi_mean_num_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 #------------
@@ -3347,7 +3342,7 @@ wcvi_wgt_species %>%
 # With an indicator showing the species was actually recorded in the haul
 wcvi_wgt_records <- wcvi %>%
   select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
-  mutate(num_record = TRUE)
+  mutate(wgt_record = TRUE)
 
 # Complete haul x species dataset
 wcvi_wgt_complete <- wcvi_hauls %>%
@@ -3365,22 +3360,22 @@ wcvi_wgt_complete <- wcvi_hauls %>%
     # No species record = absence = 0.
     # Species recorded but number unavailable = NA.
     wgt_cpue = if_else(
-      is.na(num_record),
+      is.na(wgt_record),
       0,
       wgt_cpue))
 
 # Calculate the mean
-wcvi_wgt_mean_cpue <- wcvi_wgt_complete %>%
+wcvi_mean_wgt_cpue <- wcvi_wgt_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_cpue = mean(wgt_cpue, na.rm = TRUE),
-    n_hauls = n(),
+    mean_wgt_cpue = mean(wgt_cpue, na.rm = TRUE),
+    n_hauls = n_distinct(haul_id),
     .groups = "drop")
 
 # **CHECK** Check that any rows with NaN are actually weight-only rows and not
 # rows where data is missing
-wcvi_wgt_mean_cpue %>%
-  filter(is.nan(mean_cpue)) %>%
+wcvi_mean_wgt_cpue %>%
+  filter(is.nan(mean_wgt_cpue)) %>%
   select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     wcvi %>%
@@ -3401,46 +3396,46 @@ wcvi_wgt_mean_cpue %>%
   )
 
 # Convert NaN values to NA for easier interpretation
-wcvi_wgt_mean_cpue <- wcvi_wgt_mean_cpue %>%
-  mutate(mean_cpue = if_else(is.nan(mean_cpue), NA_real_, mean_cpue))
+wcvi_mean_wgt_cpue <- wcvi_mean_wgt_cpue %>%
+  mutate(mean_wgt_cpue = if_else(is.nan(mean_wgt_cpue), NA_real_, mean_wgt_cpue))
 
 # Filter
 unique(wcvi_full$class)
 
-wcvi_wgt_elasmo_ts <- wcvi_wgt_mean_cpue %>%
+wcvi_wgt_elasmo_ts <- wcvi_mean_wgt_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 # Final checks
 # For each species and spatial cell, determine whether it
 # ever has positive mean number CPUE.
 
-wcvi_num_mean_cpue %>%
+wcvi_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(
-      mean_cpue,
+    max_mean_num_cpue = max(
+      mean_num_cpue,
       na.rm = TRUE),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
     n_with_positive_cpue = sum(
-      max_mean_cpue > 0),
+      max_mean_num_cpue > 0),
     n_with_zero_only = sum(
-      max_mean_cpue == 0))
+      max_mean_num_cpue == 0))
 
-wcvi_wgt_mean_cpue %>%
+wcvi_mean_wgt_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(
-      mean_cpue,
+    max_mean_wgt_cpue = max(
+      mean_wgt_cpue,
       na.rm = TRUE),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
     n_with_positive_cpue = sum(
-      max_mean_cpue > 0),
+      max_mean_wgt_cpue > 0),
     n_with_zero_only = sum(
-      max_mean_cpue == 0))
+      max_mean_wgt_cpue == 0))
 
 # Clean house
 rm(wcvi_env)
@@ -3455,17 +3450,31 @@ rm(wcvi_hauls)
 
 
 
-
 #==================
 # Bind all together
 #==================
 
-fishglob_ts <- bind_rows(bits_elasmo_ts, evhoe_elasmo_ts, fr_elasmo_ts, gmex_elasmo_ts,
-                         gsln_elasmo_ts, gsls_elasmo_ts, ie_elasmo_ts, neus_elasmo_ts,
-                         nigfs_elasmo_ts, nor_elasmo_ts, ns_elasmo_ts, pt_elasmo_ts,
-                         rock_elasmo_ts, scs_elasmo_ts, seus_elasmo_ts, sparsa_elasmo_ts,
-                         spnorth_elasmo_ts, spporc_elasmo_ts, swc_elasmo_ts, wcann_elasmo_ts,
-                         wctri_elasmo_ts)
+fishglob_ts <- bind_rows(ai_elasmo_ts, bits_elasmo_ts, ebs_elasmo_ts, evhoe_elasmo_ts, 
+                         fr_elasmo_ts, gmex_elasmo_ts, goa_elasmo_ts, gsln_elasmo_ts, 
+                         gsls_elasmo_ts, hs_num_elasmo_ts, hs_wgt_elasmo_ts, ie_elasmo_ts,
+                         neus_elasmo_ts, nigfs_elasmo_ts, nor_elasmo_ts, ns_elasmo_ts, 
+                         pt_elasmo_ts, qcs_num_elasmo_ts, qcs_wgt_elasmo_ts, rock_elasmo_ts, 
+                         scs_elasmo_ts, seus_elasmo_ts, sog_num_elasmo_ts, sog_wgt_elasmo_ts,
+                         sparsa_elasmo_ts, spnorth_elasmo_ts, spporc_elasmo_ts, swc_elasmo_ts,
+                         wcann_elasmo_ts, wchg_num_elasmo_ts, wchg_wgt_elasmo_ts, wctri_elasmo_ts,
+                         wcvi_num_elasmo_ts, wcvi_wgt_elasmo_ts) %>%
+  filter( # Removing rows which are all NA
+    !(is.na(mean_num_cpue) & is.na(mean_wgt_cpue) & is.na(mean_wgt_cpua))) %>%
+  select(survey, year, lat_cell, lon_cell, accepted_name, order, class, mean_num_cpue,
+         mean_wgt_cpue, mean_wgt_cpua, n_hauls)
+
+# **CHECK** That each row has just one metric
+fishglob_ts %>%
+  mutate(
+    n_metrics = rowSums(
+      !is.na(select(., mean_num_cpue, mean_wgt_cpue, mean_wgt_cpua)))) %>%
+  count(n_metrics)
+
 
 write_csv(fishglob_ts, "Fishglob_timeseries.csv")
 

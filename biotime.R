@@ -22,19 +22,20 @@ taxonomy <- load_taxa(server=getOption("fishbase"))
 
 # Create species lookup table
 species_lookup <- taxonomy %>%
-  select(Species, Order, Class, SuperClass) %>%
+  select(Species, SpecCode, Order, Class, SuperClass) %>%
   rename(accepted_name = Species) %>%
   distinct()
 
 # Create family lookup table
 family_lookup <- taxonomy %>%
-  select(Family, Order, Class, SuperClass) %>%
+  select(Family, SpecCode, Order, Class, SuperClass) %>%
   rename(accepted_name = Family) %>%
   distinct()
 
 # Combine
 taxonomy_lookup <- bind_rows(species_lookup, family_lookup) %>%
-  distinct(accepted_name, .keep_all = TRUE)
+  distinct(accepted_name, .keep_all = TRUE) %>%
+  rename(fishbase_code = SpecCode, order = Order, class = Class, superclass = SuperClass)
 
 # Check each name only occurs once
 taxonomy_lookup %>%
@@ -75,7 +76,6 @@ mcr %>%
 mcr <- mcr %>%
   rename(accepted_name = valid_name, num_cpue = ABUNDANCE, year = YEAR, haul_id = SAMPLE_DESC) %>%
   left_join(taxonomy_lookup, by = "accepted_name") %>%
-  rename(order = Order, class = Class, superclass = SuperClass) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, num_cpue, accepted_name,
          order, class, superclass)
 
@@ -128,30 +128,30 @@ mcr_complete <- mcr_hauls %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
 # Now calculate mean_cpue of all events in a grid square, per species, per year, per survey
-mcr_mean_cpue <- mcr_complete %>%
+mcr_mean_num_cpue <- mcr_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class, superclass) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK** Every species/grid cell combination has >1 positive combination
-mcr_mean_cpue %>%
+mcr_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 # Filter for chondrichthyes (elasmobranchii and holocephali/chimaeriformes)
 unique(mcr$superclass)
 
-mcr_elasmo_ts <- mcr_mean_cpue %>%
+mcr_elasmo_ts <- mcr_mean_num_cpue %>%
   filter(superclass %in% c("Chondrichthyes"))
 
 # Clean house
@@ -190,7 +190,6 @@ pelagic %>%
 pelagic <- pelagic %>%
   rename(accepted_name = valid_name, num_cpue = ABUNDANCE, year = YEAR, haul_id = SAMPLE_DESC) %>%
   left_join(taxonomy_lookup, by="accepted_name") %>%
-  rename(order = Order, class = Class, superclass = SuperClass) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, num_cpue, accepted_name,
          order, class, superclass)
 
@@ -234,30 +233,30 @@ pelagic_complete <- pelagic_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-pelagic_mean_cpue <- pelagic_complete %>%
+pelagic_mean_num_cpue <- pelagic_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class, superclass) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK** Every species/grid cell combination has >1 positive combination
-pelagic_mean_cpue %>%
+pelagic_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 # Filter for chondrichthyes (elasmobranchii and holocephali/chimaeriformes)
 unique(pelagic$superclass)
 
-pelagic_elasmo_ts <- pelagic_mean_cpue %>%
+pelagic_elasmo_ts <- pelagic_mean_num_cpue %>%
   filter(superclass %in% c("Chondrichthyes"))
 
 # Clean house
@@ -296,7 +295,6 @@ seych %>%
 seych <- seych %>%
   rename(accepted_name = valid_name, num_cpue = ABUNDANCE, year = YEAR, haul_id = SAMPLE_DESC) %>%
   left_join(taxonomy_lookup, by="accepted_name") %>%
-  rename(order = Order, class = Class, superclass = SuperClass) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, num_cpue, accepted_name,
          order, class, superclass)
 
@@ -340,24 +338,24 @@ seych_complete <- seych_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-seych_mean_cpue <- seych_complete %>%
+seych_mean_num_cpue <- seych_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class, superclass) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK** Every species/grid cell combination has >1 positive combination
-seych_mean_cpue %>%
+seych_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 # No chondrichthyes
@@ -398,7 +396,6 @@ stj %>%
 stj <- stj %>%
   rename(accepted_name = valid_name, num_cpue = ABUNDANCE, year = YEAR, haul_id = SAMPLE_DESC) %>%
   left_join(taxonomy_lookup, by="accepted_name") %>%
-  rename(order = Order, class = Class, superclass = SuperClass) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, num_cpue, accepted_name,
          order, class, superclass)
 
@@ -442,28 +439,28 @@ stj_complete <- stj_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-stj_mean_cpue <- stj_complete %>%
+stj_mean_num_cpue <- stj_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class, superclass) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK** Every species/grid cell combination has >1 positive combination
-stj_mean_cpue %>%
+stj_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 unique(stj$superclass)
-stj_elasmo_ts <- stj_mean_cpue %>%
+stj_elasmo_ts <- stj_mean_num_cpue %>%
   filter(superclass %in% c("Chondrichthyes"))
 
 # Clean house
@@ -502,7 +499,6 @@ croix %>%
 croix <- croix %>%
   rename(accepted_name = valid_name, num_cpue = ABUNDANCE, year = YEAR, haul_id = SAMPLE_DESC) %>%
   left_join(taxonomy_lookup, by="accepted_name") %>%
-  rename(order = Order, class = Class, superclass = SuperClass) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, num_cpue, accepted_name,
          order, class, superclass)
 
@@ -546,28 +542,28 @@ croix_complete <- croix_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-croix_mean_cpue <- croix_complete %>%
+croix_mean_num_cpue <- croix_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class, superclass) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK** Every species/grid cell combination has >1 positive combination
-croix_mean_cpue %>%
+croix_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 unique(croix$superclass)
-croix_elasmo_ts <- croix_mean_cpue %>%
+croix_elasmo_ts <- croix_mean_num_cpue %>%
   filter(superclass %in% c("Chondrichthyes"))
 
 # Clean house
@@ -607,7 +603,6 @@ hoga %>%
 hoga <- hoga %>%
   rename(accepted_name = valid_name, num_cpue = ABUNDANCE, year = YEAR, haul_id = SAMPLE_DESC) %>%
   left_join(taxonomy_lookup, by="accepted_name") %>%
-  rename(order = Order, class = Class, superclass = SuperClass) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, num_cpue, accepted_name,
          order, class, superclass)
 
@@ -651,28 +646,28 @@ hoga_complete <- hoga_hauls %>%
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
-hoga_mean_cpue <- hoga_complete %>%
+hoga_mean_num_cpue <- hoga_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class, superclass) %>%
   summarise(
-    mean_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK** Every species/grid cell combination has >1 positive combination
-hoga_mean_cpue %>%
+hoga_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_cpue = max(mean_cpue),
+    max_mean_num_cpue = max(mean_num_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_cpue > 0),
-    n_with_zero_only = sum(max_mean_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
   )
 
 unique(hoga$superclass)
-hoga_elasmo_ts <- hoga_mean_cpue %>%
+hoga_elasmo_ts <- hoga_mean_num_cpue %>%
   filter(superclass %in% c("Chondrichthyes"))
 
 # Clean house
@@ -680,8 +675,6 @@ rm(hoga_full)
 rm(hoga_species)
 rm(hoga_hauls)
 rm(hoga_complete)
-
-
 
 
 
