@@ -12,23 +12,30 @@ library(sf)
 library(rnaturalearth)
 library(rnaturalearthdata)
 library(broom)
+library(lubridate) # For extracting year from the eventDate column
 
 # Load taxonomy
 taxonomy_lookup <- read.csv("taxonomy_lookup.csv")
 
 
 # Load data
-soviet_trawl_full <- read_tsv("soviet_trawl.txt")
+NSW_full <- read_tsv("NSW.txt")
+print(problems(NSW_full), n = 31)
 
-soviet_trawl_clean <- soviet_trawl_full %>%
-  select(id, individualCount, occurrenceStatus, year, decimalLatitude, decimalLongitude, scientificName) %>%
+class(NSW_full$eventDate)
+head(NSW_full$eventDate)
+sum(is.na(NSW_full$eventDate))
+
+NSW_clean <- NSW_full %>%
+  select(id, individualCount, occurrenceStatus, eventDate, decimalLatitude, decimalLongitude, scientificName) %>%
   mutate(
+    year = year(eventDate),
     lat_cell = floor(decimalLatitude),
     lon_cell = floor(decimalLongitude)
   )
 
 # **CHECK** Each ID corresponds with only one year/grid cell combination
-soviet_trawl_clean %>%
+NSW_clean %>%
   distinct(
     id,
     year,
@@ -39,42 +46,42 @@ soviet_trawl_clean %>%
   filter(n > 1)  
 
 # Make variable names consistent and add species data
-soviet_trawl <- soviet_trawl_clean %>%
+NSW <- NSW_clean %>%
   rename(accepted_name = scientificName, num_cpue = individualCount, haul_id = id, presenceabsence = occurrenceStatus) %>%
   left_join(taxonomy_lookup, by = "accepted_name") %>%
-  mutate(survey = "SovietTrawl") %>%
+  mutate(survey = "NSW") %>%
   select(survey, haul_id, year, lat_cell, lon_cell, num_cpue, presenceabsence, accepted_name,
          order, class, superclass)
 
 # Find species that have ever been recorded in a grid square
-soviet_trawl_species <- soviet_trawl %>%
+NSW_species <- NSW %>%
   filter(num_cpue > 0) %>% 
   distinct(lat_cell, lon_cell, accepted_name, order, class, superclass)
 
 # **CHECK** Only one row per species per grid cell
-soviet_trawl_species %>%
+NSW_species %>%
   count(lat_cell, lon_cell, accepted_name, order, class, superclass) %>%
   filter(n > 1)
 
 # Get a list of all the individual hauls
 # As may have many rows per haul
-soviet_trawl_hauls <- soviet_trawl %>%
+NSW_hauls <- NSW %>%
   distinct(survey, haul_id, year, lat_cell, lon_cell)
 
 # **CHECK** Only one row per haul
-soviet_trawl_hauls %>%
+NSW_hauls %>%
   count(survey, haul_id) %>%
   filter(n > 1)
 
 # Create every possible haul x species combination
-soviet_trawl_complete <- soviet_trawl_hauls %>%
+NSW_complete <- NSW_hauls %>%
   inner_join(
-    soviet_trawl_species,
+    NSW_species,
     by = c("lat_cell", "lon_cell"),
     relationship = "many-to-many"
   ) %>%
   left_join(
-    soviet_trawl %>%
+    NSW %>%
       select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, 
              order, class, superclass, num_cpue),
     by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name",
@@ -84,7 +91,7 @@ soviet_trawl_complete <- soviet_trawl_hauls %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
 # Now calculate mean_cpue of all events in a grid square, per species, per year, per survey
-soviet_trawl_mean_num_cpue <- soviet_trawl_complete %>%
+NSW_mean_num_cpue <- NSW_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class, superclass) %>%
   summarise(
     mean_num_cpue = mean(num_cpue, na.rm = TRUE),
@@ -93,7 +100,7 @@ soviet_trawl_mean_num_cpue <- soviet_trawl_complete %>%
   )
 
 # **CHECK** Every species/grid cell combination has >1 positive combination
-soviet_trawl_mean_num_cpue %>%
+NSW_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
     max_mean_num_cpue = max(mean_num_cpue),
@@ -105,16 +112,17 @@ soviet_trawl_mean_num_cpue %>%
   )
 
 # Filter for chondrichthyes (elasmobranchii and holocephali/chimaeriformes)
-unique(soviet_trawl$superclass)
+unique(NSW$superclass)
 
-soviet_trawl_elasmo_ts <- soviet_trawl_mean_num_cpue %>%
+NSW_elasmo_ts <- NSW_mean_num_cpue %>%
   filter(superclass %in% c("Chondrichthyes"))
 
 # Clean house
-rm(soviet_trawl_clean)
-rm(soviet_trawl_full)
-rm(soviet_trawl_species)
-rm(soviet_trawl_hauls)
-rm(soviet_trawl_complete)
+rm(NSW_clean)
+rm(NSW_full)
+rm(NSW_species)
+rm(NSW_hauls)
+rm(NSW_complete)
 
-write.csv(soviet_trawl_elasmo_ts, "SovietTrawl_timeseries.csv")
+write.csv(NSW_elasmo_ts, "NSW_timeseries.csv")
+

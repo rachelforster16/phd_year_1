@@ -22,6 +22,12 @@ IMOS_ts <- read.csv("IMOS_timeseries.csv") %>%
   mutate(database = "IMOS")
 timefish_ts <- read.csv("TimeFISH_timeseries.csv") %>%
   mutate(database = "TimeFISH")
+soviet_trawl_ts <- read.csv("SovietTrawl_timeseries.csv") %>%
+  mutate(database = "SovietTrawl")
+NSW_ts <- read.csv("NSW_timeseries.csv") %>%
+  mutate(database = "NSW")
+MEDITS_ts <- read.csv("MEDITS_timeseries.csv") %>%
+  mutate(database = "MEDITS")
 
 #============================
 # Map with surveyed locations
@@ -33,8 +39,9 @@ world <- ne_countries(
   returnclass = "sf")
 
 # Creating a dataframe with each lat cell and lon cell combination which has been surveyed
-surveyed_cells <- bind_rows(fishglob_ts, biotime_ts, IMOS_ts, timefish_ts) %>%
-  distinct(lat_cell, lon_cell)
+surveyed_cells <- bind_rows(fishglob_ts, biotime_ts, IMOS_ts, timefish_ts, soviet_trawl_ts, NSW_ts,
+                            MEDITS_ts) %>%
+  distinct(survey, lat_cell, lon_cell)
 
 # Turning this into geographic polygons
 surveyed_cells_sf <- surveyed_cells %>%
@@ -54,7 +61,7 @@ surveyed_cells_sf <- surveyed_cells %>%
     ncol = 2, byrow = TRUE))))) %>%
   ungroup() %>%
   st_as_sf(crs = 4326) %>%
-  select(lat_cell, lon_cell, geometry)
+  select(survey, lat_cell, lon_cell, geometry)
 
 
 survey_coverage_map <- ggplot() +
@@ -66,7 +73,7 @@ survey_coverage_map <- ggplot() +
   ) +
   geom_sf(
     data = surveyed_cells_sf,
-    fill = "royalblue",
+    aes(fill = survey),
     colour = "white",
     linewidth = 0.1
   ) +

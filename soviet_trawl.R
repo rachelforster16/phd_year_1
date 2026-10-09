@@ -42,7 +42,7 @@ soviet_trawl_clean %>%
 soviet_trawl <- soviet_trawl_clean %>%
   rename(accepted_name = scientificName, num_cpue = individualCount, haul_id = id, presenceabsence = occurrenceStatus) %>%
   left_join(taxonomy_lookup, by = "accepted_name") %>%
-  mutate(survey = "Soviet_Trawl") %>%
+  mutate(survey = "SovietTrawl") %>%
   select(survey, haul_id, year, lat_cell, lon_cell, num_cpue, presenceabsence, accepted_name,
          order, class, superclass)
 
@@ -109,3 +109,18 @@ unique(soviet_trawl$superclass)
 
 soviet_trawl_elasmo_ts <- soviet_trawl_mean_num_cpue %>%
   filter(superclass %in% c("Chondrichthyes"))
+
+# Clean house
+rm(soviet_trawl_clean)
+rm(soviet_trawl_full)
+rm(soviet_trawl_species)
+rm(soviet_trawl_hauls)
+rm(soviet_trawl_complete)
+
+write.csv(soviet_trawl_elasmo_ts, "SovietTrawl_timeseries.csv")
+
+
+
+
+
+
