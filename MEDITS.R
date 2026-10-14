@@ -135,7 +135,7 @@ rm(MEDITS_nw_species)
 rm(MEDITS_nw_hauls)
 rm(MEDITS_nw_complete)
 
-
+write_csv(MEDITS_nw_elasmo_ts, "MEDITS_nw_timeseries.csv")
 
 #==================================
 # MEDITS: Spanish Continental Shelf
@@ -260,14 +260,7 @@ rm(MEDITS_spain_hauls)
 rm(MEDITS_spain_complete)
 
 
-
-#==============
-# Bind together
-#==============
-
-MEDITS_elasmo_ts <- bind_rows(MEDITS_nw_elasmo_ts, MEDITS_spain_elasmo_ts)
-
-write.csv(MEDITS_elasmo_ts, "MEDITS_timeseries.csv")
+write_csv(MEDITS_spain_elasmo_ts, "MEDITS_spain_timeseries.csv")
 
 
 

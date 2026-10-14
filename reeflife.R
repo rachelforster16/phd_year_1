@@ -281,7 +281,7 @@ rm(IMOS_crypto_complete)
 
 IMOS_ts <- bind_rows(IMOS_reef_elasmo_ts, IMOS_crypto_elasmo_ts)
 
-write.csv(IMOS_ts, "IMOS_timeseries.csv")
+write_csv(IMOS_ts, "IMOS_timeseries.csv")
 
 
 

@@ -117,7 +117,7 @@ rm(soviet_trawl_species)
 rm(soviet_trawl_hauls)
 rm(soviet_trawl_complete)
 
-write.csv(soviet_trawl_elasmo_ts, "SovietTrawl_timeseries.csv")
+write_csv(soviet_trawl_elasmo_ts, "SovietTrawl_timeseries.csv")
 
 
 

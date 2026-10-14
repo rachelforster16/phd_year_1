@@ -124,5 +124,5 @@ rm(NSW_species)
 rm(NSW_hauls)
 rm(NSW_complete)
 
-write.csv(NSW_elasmo_ts, "NSW_timeseries.csv")
+write_csv(NSW_elasmo_ts, "NSW_timeseries.csv")
 

@@ -18,32 +18,34 @@ library(broom)
 #================================
 
 # Load taxonomy
-taxonomy <- load_taxa(server=getOption("fishbase"))
+# taxonomy <- load_taxa(server=getOption("fishbase"))
 
 # Create species lookup table
-species_lookup <- taxonomy %>%
-  select(Species, SpecCode, Order, Class, SuperClass) %>%
-  rename(accepted_name = Species) %>%
-  distinct()
+# species_lookup <- taxonomy %>%
+#  select(Species, SpecCode, Order, Class, SuperClass) %>%
+#  rename(accepted_name = Species) %>%
+#  distinct()
 
 # Create family lookup table
-family_lookup <- taxonomy %>%
-  select(Family, SpecCode, Order, Class, SuperClass) %>%
-  rename(accepted_name = Family) %>%
-  distinct()
+# family_lookup <- taxonomy %>%
+#  select(Family, SpecCode, Order, Class, SuperClass) %>%
+#  rename(accepted_name = Family) %>%
+#  distinct()
 
 # Combine
-taxonomy_lookup <- bind_rows(species_lookup, family_lookup) %>%
-  distinct(accepted_name, .keep_all = TRUE) %>%
-  rename(fishbase_code = SpecCode, order = Order, class = Class, superclass = SuperClass)
+# taxonomy_lookup <- bind_rows(species_lookup, family_lookup) %>%
+#  distinct(accepted_name, .keep_all = TRUE) %>%
+#  rename(fishbase_code = SpecCode, order = Order, class = Class, superclass = SuperClass)
 
 # Check each name only occurs once
-taxonomy_lookup %>%
-  count(accepted_name) %>%
-  filter(n > 1)
+# taxonomy_lookup %>%
+#  count(accepted_name) %>%
+#  filter(n > 1)
 
 # Save as CSV
-write_csv(taxonomy_lookup, "taxonomy_lookup.csv")
+# write_csv(taxonomy_lookup, "taxonomy_lookup.csv")
+
+taxonomy_lookup <- read.csv("taxonomy_lookup.csv")
 
 #=======================================================================
 # MCR LTER Coral Reef Long-term Population and Community Dynamics Fishes
