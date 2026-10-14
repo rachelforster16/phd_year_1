@@ -26,8 +26,10 @@ soviet_trawl_ts <- read.csv("SovietTrawl_timeseries.csv") %>%
   mutate(database = "SovietTrawl")
 NSW_ts <- read.csv("NSW_timeseries.csv") %>%
   mutate(database = "NSW")
-MEDITS_ts <- read.csv("MEDITS_timeseries.csv") %>%
-  mutate(database = "MEDITS")
+MEDITS_nw_ts <- read.csv("MEDITS_nw_timeseries.csv") %>%
+  mutate(database = "MEDITS_nw")
+MEDITS_spain_ts <- read.csv("MEDITS_spain_timeseries.csv") %>%
+  mutate(database = "MEDITS_spain")
 
 #============================
 # Map with surveyed locations
@@ -40,7 +42,7 @@ world <- ne_countries(
 
 # Creating a dataframe with each lat cell and lon cell combination which has been surveyed
 surveyed_cells <- bind_rows(fishglob_ts, biotime_ts, IMOS_ts, timefish_ts, soviet_trawl_ts, NSW_ts,
-                            MEDITS_ts) %>%
+                            MEDITS_nw_ts, MEDITS_spain_ts) %>%
   distinct(survey, lat_cell, lon_cell)
 
 # Turning this into geographic polygons
@@ -84,4 +86,24 @@ survey_coverage_map <- ggplot() +
   )
 
 survey_coverage_map
+
+
+
+
+
+
+
+
+# All data?????
+
+all_timeseries <- bind_rows(fishglob_ts, biotime_ts, IMOS_ts, timefish_ts, soviet_trawl_ts, NSW_ts,
+                            MEDITS_nw_ts, MEDITS_spain_ts)
+
+
+
+
+
+
+
+
 
