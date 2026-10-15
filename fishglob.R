@@ -838,9 +838,9 @@ rm(gsls_hauls)
 rm(gsls_complete)
 
 
-#=============================================
-# Canada, Hecate Strait (HS) ** SPLIT INTO TWO
-#=============================================
+#===========================
+# Canada, Hecate Strait (HS)
+#===========================
 hs_env <- new.env()
 load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/HS_clean.RData",
      envir = hs_env)
@@ -861,241 +861,130 @@ hs <- hs_full %>%
         is.na(wgt_cpue) &
         is.na(wgt_cpua)))
 
-# Check that no rows are all NAs (and therefore should not be treated as observations)
-hs %>%
-  filter(
-    is.na(num_cpue) &
-      is.na(num_cpua) &
-      is.na(wgt_cpue) &
-      is.na(wgt_cpua)
+# Build model to predict missing wgt_cpue based on num_cpue
+hs_model <- lm(wgt_cpue ~ accepted_name * num_cpue, data = hs)
+summary(hs_model)
+anova(hs_model)
+
+# Extract rows where wgt_cpue in NA
+missing_rows_hs <- hs %>%
+  filter(is.na(wgt_cpue)) %>%
+  mutate(.row_id = which(is.na(hs$wgt_cpue))) # Create a temporary row identifier so know where to put predictions back
+
+# !! Cannot just fill the values using predict()
+# predicted_wgt_cpue_hs <- predict(hs_model, newdata = missing_rows_hs)
+# This is because some species never have a wgt_cpue vlaue so the model cannot be trained on this data
+# Returns an error
+# Therefore set up code where rows that can be filled are filled, and others are left as NA
+
+# Identify species levels known to the model
+known_species_hs <- hs_model$xlevels$accepted_name
+
+# Keep rows with known species levels
+predictable_rows_hs <- missing_rows_hs %>%
+  filter(accepted_name %in% known_species_hs)
+
+# Predict one row at a time, leaving NA if the prediction fails
+predictions_hs <- lapply(seq_len(nrow(predictable_rows_hs)), function(i) {
+  row <- predictable_rows_hs[i,]
+  tryCatch(
+    as.numeric(predict(hs_model, newdata = row)),
+    error = function(e) NA_real_
+  )
+})
+
+# Combine predictions
+predicted_values_hs <- unlist(predictions_hs)
+
+# Fill successful predictions into the original dataset
+valid_predictions_hs <- !is.na(predicted_values_hs)
+
+hs$wgt_cpue[predictable_rows_hs$.row_id[valid_predictions_hs]] <- predicted_values_hs[valid_predictions_hs]
+
+# Complete the analysis the same as other datasets PLUS remove any negative values which have been filled with the predict function
+hs <- hs %>%
+  filter(wgt_cpue >= 0) %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, depth,
+         haul_dur, wgt_cpue, accepted_name, order, class)
+
+hs_species <- hs %>%
+  filter(wgt_cpue > 0) %>%
+  distinct(
+    lat_cell,
+    lon_cell,
+    accepted_name,
+    order,
+    class
   )
 
-# Check the data structure
-
-# Check for duplicated elasmobranch records
-hs %>%
-  filter(class == "Elasmobranchii") %>%
-  count(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+# **CHECK**
+hs_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
   filter(n > 1)
 
-# Not elasmobranchs so only matters that there is a record of the survey within grid cell
-
-# Create the haul level dataset
-# Records each sampled haul once
 hs_hauls <- hs %>%
   distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
 
-# Check each haul only has one row
+# **CHECK**
 hs_hauls %>%
-  count(survey,haul_id) %>%
+  count(survey, haul_id) %>%
   filter(n > 1)
 
-#------------
-# NUMBER DATA
-#------------
-
-# Only species with at least one number observation are included in the number pool
-# A species with only weight is NOT included
-hs_num_species <- hs %>%
-  filter(!is.na(num_cpue)) %>%
-  distinct(lat_cell, lon_cell, accepted_name, order, class)
-
-# **CHECK** for duplicates
-hs_num_species %>%
-  count(lat_cell, lon_cell, accepted_name, order, class) %>%
-  filter(n > 1)
-
-# Keep the original number records
-# With an indicator showing the species was actually recorded in the haul
-hs_num_records <- hs %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, num_cpue) %>%
-  mutate(num_record = TRUE)
-
-# Complete haul x species dataset
-hs_num_complete <- hs_hauls %>%
+hs_complete <- hs_hauls %>%
   inner_join(
-    hs_num_species,
+    hs_species,
     by = c("lat_cell", "lon_cell"),
     relationship = "many-to-many"
   ) %>%
-  left_join(
-    hs_num_records,
-    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
-    relationship = "many-to-many"
-  ) %>%
-  mutate(
-    # No species record = absence = 0.
-    # Species recorded but number unavailable = NA.
-    num_cpue = if_else(
-      is.na(num_record),
-      0,
-      num_cpue))
-
-# Calculate the mean
-hs_mean_num_cpue <- hs_num_complete %>%
-  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
-  summarise(
-    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
-    n_hauls = n_distinct(haul_id),
-    .groups = "drop")
-
-# **CHECK** Check that any rows with NaN are actually weight-only rows and not
-# rows where data is missing
-hs_mean_num_cpue %>%
-  filter(is.nan(mean_num_cpue)) %>%
-  select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     hs %>%
-      group_by(year, lat_cell, lon_cell, accepted_name) %>%
-      summarise(
-        n_weight = sum(!is.na(wgt_cpue)),
-        n_num = sum(!is.na(num_cpue)),
-        .groups = "drop"
-      ),
-    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue),
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"
+    )
   ) %>%
-  summarise(
-    n_combinations = n(),
-    all_weight_only = all(n_weight > 0 & n_num == 0),
-    n_weight_only = sum(n_weight > 0 & n_num == 0),
-    n_neither = sum(n_weight == 0 & n_num == 0),
-    n_with_number = sum(n_num > 0)
-  )
+  mutate(wgt_cpue = replace_na(wgt_cpue, 0))
 
-# Convert NaN values to NA for easier interpretation
-hs_mean_num_cpue <- hs_mean_num_cpue %>%
-  mutate(mean_num_cpue = if_else(is.nan(mean_num_cpue), NA_real_, mean_num_cpue))
-
-# Filter
-unique(hs_full$class)
-
-hs_num_elasmo_ts <- hs_mean_num_cpue %>%
-  filter(class %in% c("Elasmobranchii", "Holocephali"))
-
-#------------
-# WEIGHT DATA
-#------------
-
-# Only species with at least one weight observation are included in the number pool
-# A species with only number is NOT included
-hs_wgt_species <- hs %>%
-  filter(!is.na(wgt_cpue)) %>%
-  distinct(lat_cell, lon_cell, accepted_name, order, class)
-
-# **CHECK** for duplicates
-hs_wgt_species %>%
-  count(lat_cell, lon_cell, accepted_name, order, class) %>%
-  filter(n > 1)
-
-# Keep the original weight records
-# With an indicator showing the species was actually recorded in the haul
-hs_wgt_records <- hs %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
-  mutate(wgt_record = TRUE)
-
-# Complete haul x species dataset
-hs_wgt_complete <- hs_hauls %>%
-  inner_join(
-    hs_wgt_species,
-    by = c("lat_cell", "lon_cell"),
-    relationship = "many-to-many"
-  ) %>%
-  left_join(
-    hs_wgt_records,
-    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
-    relationship = "many-to-many"
-  ) %>%
-  mutate(
-    # No species record = absence = 0.
-    # Species recorded but number unavailable = NA.
-    wgt_cpue = if_else(
-      is.na(wgt_record),
-      0,
-      wgt_cpue))
-
-# Calculate the mean
-hs_mean_wgt_cpue <- hs_wgt_complete %>%
+hs_mean_wgt_cpue <- hs_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
     mean_wgt_cpue = mean(wgt_cpue, na.rm = TRUE),
-    n_hauls = n_distinct(haul_id),
-    .groups = "drop")
-
-# **CHECK** Check that any rows with NaN are actually weight-only rows and not
-# rows where data is missing
-hs_mean_wgt_cpue %>%
-  filter(is.nan(mean_wgt_cpue)) %>%
-  select(year, lat_cell, lon_cell, accepted_name) %>%
-  left_join(
-    hs %>%
-      group_by(year, lat_cell, lon_cell, accepted_name) %>%
-      summarise(
-        n_num = sum(!is.na(num_cpue)),
-        n_weight = sum(!is.na(wgt_cpue)),
-        .groups = "drop"
-      ),
-    by = c("year", "lat_cell", "lon_cell", "accepted_name")
-  ) %>%
-  summarise(
-    n_combinations = n(),
-    all_number_only = all(n_num > 0 & n_weight == 0),
-    n_num_only = sum(n_num > 0 & n_weight == 0),
-    n_neither = sum(n_weight == 0 & n_num == 0),
-    n_with_weight = sum(n_weight > 0)
+    n_hauls = n(),
+    .groups = "drop"
   )
 
-# Convert NaN values to NA for easier interpretation
-hs_mean_wgt_cpue <- hs_mean_wgt_cpue %>%
-  mutate(mean_wgt_cpue = if_else(is.nan(mean_wgt_cpue), NA_real_, mean_wgt_cpue))
-
-# Filter
-unique(hs_full$class)
-
-hs_wgt_elasmo_ts <- hs_mean_wgt_cpue %>%
-  filter(class %in% c("Elasmobranchii", "Holocephali"))
-
-# Final checks
-# For each species and spatial cell, determine whether it
-# ever has positive mean number CPUE.
-
-hs_mean_num_cpue %>%
-  group_by(lat_cell, lon_cell, accepted_name) %>%
-  summarise(
-    max_mean_num_cpue = max(
-      mean_num_cpue,
-      na.rm = TRUE),
-    .groups = "drop") %>%
-  summarise(
-    n_species = n(),
-    n_with_positive_cpue = sum(
-      max_mean_num_cpue > 0),
-    n_with_zero_only = sum(
-      max_mean_num_cpue == 0))
-
+# **CHECK**
 hs_mean_wgt_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_wgt_cpue = max(
-      mean_wgt_cpue,
-      na.rm = TRUE),
+    max_mean_wgt_cpue = max(mean_wgt_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(
-      max_mean_wgt_cpue > 0),
-    n_with_zero_only = sum(
-      max_mean_wgt_cpue == 0))
+    n_with_positive_cpue = sum(max_mean_wgt_cpue > 0),
+    n_with_zero_only = sum(max_mean_wgt_cpue == 0)
+  )
+
+unique(hs_full$class)
+
+hs_elasmo_ts <- hs_mean_wgt_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
 
 # Clean house
 rm(hs_env)
 rm(hs_full)
-rm(hs_num_species)
-rm(hs_num_complete)
-rm(hs_wgt_species)
-rm(hs_wgt_records)
-rm(hs_wgt_complete)
-rm(hs_num_records)
 rm(hs_hauls)
+rm(hs_complete)
+rm(hs_model)
+rm(hs_species)
+rm(missing_rows_hs)
+rm(predictable_rows_hs)
+rm(predictions_hs)
+rm(known_species_hs)
+rm(predicted_values_hs)
+rm(predicted_wgt_cpue_hs)
+rm(valid_predictions_hs)
+
 
 
 #====================
@@ -1643,239 +1532,124 @@ qcs <- qcs_full %>%
         is.na(wgt_cpue) &
         is.na(wgt_cpua)))
 
-# Check that no rows are all NAs (and therefore should not be treated as observations)
-# Can also check for whether there are rows which are only e.g. num_cpua as this would 
-# need to be accounted for
-qcs %>%
-  filter(
-    is.na(num_cpue) &
-      is.na(num_cpua) &
-      is.na(wgt_cpue) &
-      is.na(wgt_cpua)
+# Build model to predict missing wgt_cpue based on num_cpue
+qcs_model <- lm(wgt_cpue ~ accepted_name * num_cpue, data = qcs)
+summary(qcs_model)
+anova(qcs_model)
+
+# Extract rows where wgt_cpue in NA
+missing_rows_qcs <- qcs %>%
+  filter(is.na(wgt_cpue)) %>%
+  mutate(.row_id = which(is.na(qcs$wgt_cpue))) # Create a temporary row identifier so know where to put predictions back
+
+# Identify species levels known to the model
+known_species_qcs <- qcs_model$xlevels$accepted_name
+
+# Keep rows with known species levels
+predictable_rows_qcs <- missing_rows_qcs %>%
+  filter(accepted_name %in% known_species_qcs)
+
+# Predict one row at a time, leaving NA if the prediction fails
+predictions_qcs <- lapply(seq_len(nrow(predictable_rows_qcs)), function(i) {
+  row <- predictable_rows_qcs[i,]
+  tryCatch(
+    as.numeric(predict(qcs_model, newdata = row)),
+    error = function(e) NA_real_
+  )
+})
+
+# Combine predictions
+predicted_values_qcs <- unlist(predictions_qcs)
+
+# Fill successful predictions into the original dataset
+valid_predictions_qcs <- !is.na(predicted_values_qcs)
+
+qcs$wgt_cpue[predictable_rows_qcs$.row_id[valid_predictions_qcs]] <- predicted_values_qcs[valid_predictions_qcs]
+
+# Complete the analysis the same as other datasets PLUS remove any negative values which have been filled with the predict function
+qcs <- qcs %>%
+  filter(wgt_cpue >= 0) %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, depth,
+         haul_dur, wgt_cpue, accepted_name, order, class)
+
+qcs_species <- qcs %>%
+  filter(wgt_cpue > 0) %>%
+  distinct(
+    lat_cell,
+    lon_cell,
+    accepted_name,
+    order,
+    class
   )
 
-# Check the data structure
-
-# Check for duplicated elasmobranch records
-qcs %>%
-  filter(class == "Elasmobranchii") %>%
-  count(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+# **CHECK**
+qcs_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
   filter(n > 1)
 
-# Not elasmobranchs so only matters that there is a record of the survey within grid cell
-
-# Create the haul level dataset
-# Records each sampled haul once
 qcs_hauls <- qcs %>%
   distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
 
-# Check each haul only has one row
+# **CHECK**
 qcs_hauls %>%
-  count(survey,haul_id) %>%
+  count(survey, haul_id) %>%
   filter(n > 1)
 
-#------------
-# NUMBER DATA
-#------------
-
-# Only species with at least one number observation are included in the number pool
-# A species with only weight is NOT included
-qcs_num_species <- qcs %>%
-  filter(!is.na(num_cpue)) %>%
-  distinct(lat_cell, lon_cell, accepted_name, order, class)
-
-# **CHECK** for duplicates
-qcs_num_species %>%
-  count(lat_cell, lon_cell, accepted_name, order, class) %>%
-  filter(n > 1)
-
-# Keep the original number records
-# With an indicator showing the species was actually recorded in the haul
-qcs_num_records <- qcs %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, num_cpue) %>%
-  mutate(num_record = TRUE)
-
-# Complete haul x species dataset
-qcs_num_complete <- qcs_hauls %>%
+qcs_complete <- qcs_hauls %>%
   inner_join(
-    qcs_num_species,
+    qcs_species,
     by = c("lat_cell", "lon_cell"),
     relationship = "many-to-many"
   ) %>%
-  left_join(
-    qcs_num_records,
-    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
-    relationship = "many-to-many"
-  ) %>%
-  mutate(
-    # No species record = absence = 0.
-    # Species recorded but number unavailable = NA.
-    num_cpue = if_else(
-      is.na(num_record),
-      0,
-      num_cpue))
-
-# Calculate the mean
-qcs_mean_num_cpue <- qcs_num_complete %>%
-  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
-  summarise(
-    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
-    n_hauls = n_distinct(haul_id),
-    .groups = "drop")
-
-# **CHECK** Check that any rows with NaN are actually weight-only rows and not
-# rows where data is missing
-qcs_mean_num_cpue %>%
-  filter(is.nan(mean_num_cpue)) %>%
-  select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     qcs %>%
-      group_by(year, lat_cell, lon_cell, accepted_name) %>%
-      summarise(
-        n_weight = sum(!is.na(wgt_cpue)),
-        n_num = sum(!is.na(num_cpue)),
-        .groups = "drop"
-      ),
-    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue),
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"
+    )
   ) %>%
-  summarise(
-    n_combinations = n(),
-    all_weight_only = all(n_weight > 0 & n_num == 0),
-    n_weight_only = sum(n_weight > 0 & n_num == 0),
-    n_neither = sum(n_weight == 0 & n_num == 0),
-    n_with_number = sum(n_num > 0)
-  )
+  mutate(wgt_cpue = replace_na(wgt_cpue, 0))
 
-# Convert NaN values to NA for easier interpretation
-qcs_mean_num_cpue <- qcs_mean_num_cpue %>%
-  mutate(mean_num_cpue = if_else(is.nan(mean_num_cpue), NA_real_, mean_num_cpue))
-
-# Filter
-unique(qcs_full$class)
-
-qcs_num_elasmo_ts <- qcs_mean_num_cpue %>%
-  filter(class %in% c("Elasmobranchii", "Holocephali"))
-
-#------------
-# WEIGHT DATA
-#------------
-
-# Only species with at least one weight observation are included in the number pool
-# A species with only number is NOT included
-qcs_wgt_species <- qcs %>%
-  filter(!is.na(wgt_cpue)) %>%
-  distinct(lat_cell, lon_cell, accepted_name, order, class)
-
-# **CHECK** for duplicates
-qcs_wgt_species %>%
-  count(lat_cell, lon_cell, accepted_name, order, class) %>%
-  filter(n > 1)
-
-# Keep the original weight records
-# With an indicator showing the species was actually recorded in the haul
-qcs_wgt_records <- qcs %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
-  mutate(wgt_record = TRUE)
-
-# Complete haul x species dataset
-qcs_wgt_complete <- qcs_hauls %>%
-  inner_join(
-    qcs_wgt_species,
-    by = c("lat_cell", "lon_cell"),
-    relationship = "many-to-many"
-  ) %>%
-  left_join(
-    qcs_wgt_records,
-    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
-    relationship = "many-to-many"
-  ) %>%
-  mutate(
-    # No species record = absence = 0.
-    # Species recorded but number unavailable = NA.
-    wgt_cpue = if_else(
-      is.na(wgt_record),
-      0,
-      wgt_cpue))
-
-# Calculate the mean
-qcs_mean_wgt_cpue <- qcs_wgt_complete %>%
+qcs_mean_wgt_cpue <- qcs_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
     mean_wgt_cpue = mean(wgt_cpue, na.rm = TRUE),
-    n_hauls = n_distinct(haul_id),
-    .groups = "drop")
-
-# **CHECK** Check that any rows with NaN are actually weight-only rows and not
-# rows where data is missing
-qcs_mean_wgt_cpue %>%
-  filter(is.nan(mean_wgt_cpue)) %>%
-  select(year, lat_cell, lon_cell, accepted_name) %>%
-  left_join(
-    qcs %>%
-      group_by(year, lat_cell, lon_cell, accepted_name) %>%
-      summarise(
-        n_num = sum(!is.na(num_cpue)),
-        n_weight = sum(!is.na(wgt_cpue)),
-        .groups = "drop"
-      ),
-    by = c("year", "lat_cell", "lon_cell", "accepted_name")
-  ) %>%
-  summarise(
-    n_combinations = n(),
-    all_number_only = all(n_num > 0 & n_weight == 0),
-    n_num_only = sum(n_num > 0 & n_weight == 0),
-    n_neither = sum(n_weight == 0 & n_num == 0),
-    n_with_weight = sum(n_weight > 0)
+    n_hauls = n(),
+    .groups = "drop"
   )
 
-# Filter
-unique(qcs_full$class)
-
-qcs_wgt_elasmo_ts <- qcs_mean_wgt_cpue %>%
-  filter(class %in% c("Elasmobranchii", "Holocephali"))
-
-# Final checks
-# For each species and spatial cell, determine whether it
-# ever has positive mean number CPUE.
-
-qcs_mean_num_cpue %>%
-  group_by(lat_cell, lon_cell, accepted_name) %>%
-  summarise(
-    max_mean_num_cpue = max(
-      mean_num_cpue,
-      na.rm = TRUE),
-    .groups = "drop") %>%
-  summarise(
-    n_species = n(),
-    n_with_positive_cpue = sum(
-      max_mean_num_cpue > 0),
-    n_with_zero_only = sum(
-      max_mean_num_cpue == 0))
-
+# **CHECK**
 qcs_mean_wgt_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_wgt_cpue = max(
-      mean_wgt_cpue,
-      na.rm = TRUE),
+    max_mean_wgt_cpue = max(mean_wgt_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(
-      max_mean_wgt_cpue > 0),
-    n_with_zero_only = sum(
-      max_mean_wgt_cpue == 0))
+    n_with_positive_cpue = sum(max_mean_wgt_cpue > 0),
+    n_with_zero_only = sum(max_mean_wgt_cpue == 0)
+  )
+
+unique(qcs_full$class)
+
+qcs_elasmo_ts <- qcs_mean_wgt_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
 
 # Clean house
 rm(qcs_env)
 rm(qcs_full)
-rm(qcs_num_species)
-rm(qcs_num_complete)
-rm(qcs_wgt_species)
-rm(qcs_wgt_records)
-rm(qcs_wgt_complete)
-rm(qcs_num_records)
 rm(qcs_hauls)
+rm(qcs_complete)
+rm(qcs_model)
+rm(qcs_species)
+rm(missing_rows_qcs)
+rm(predictable_rows_qcs)
+rm(predictions_qcs)
+rm(known_species_qcs)
+rm(predicted_values_qcs)
+rm(predicted_wgt_cpue_qcs)
+rm(valid_predictions_qcs)
+
 
 #==========================
 # Rockall Plateau (ROCKALL)
@@ -1972,14 +1746,41 @@ load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 
      envir = scs_env)
 scs_full <- scs_env$data
 
+# Prepare the dataset
 scs <- scs_full %>%
   ungroup() %>%
   mutate(
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
+
+# Build model to predict missing wgt_cpue based on num_cpue
+scs_model <- lm(num_cpue ~ accepted_name * wgt_cpue, data = scs)
+summary(scs_model)
+anova(scs_model)
+
+# Extract rows where wgt_cpue in NA
+missing_rows_scs <- scs %>%
+  filter(is.na(num_cpue))
+
+# Predict the missing wgt_cpue values
+predicted_num_cpue_scs <- predict(scs_model, newdata = missing_rows_scs)
+
+# Populate the NA values
+scs[is.na(scs$num_cpue), "num_cpue"] <- predicted_num_cpue_scs
+
+# Analysis as normal
+scs <- scs %>%
+  filter(num_cpue >= 0) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, num_cpue, accepted_name, order, class)
 
 scs_species <- scs %>%
   filter(num_cpue > 0) %>%
@@ -2049,6 +1850,8 @@ rm(scs_full)
 rm(scs_species)
 rm(scs_hauls)
 rm(scs_complete)
+rm(scs_model)
+rm(predicted_num_cpue_scs)
 
 
 #=====================
@@ -2161,239 +1964,125 @@ sog <- sog_full %>%
         is.na(wgt_cpue) &
         is.na(wgt_cpua)))
 
-# Check that no rows are all NAs (and therefore should not be treated as observations)
-# Can also check for whether there are rows which are only e.g. num_cpua as this would 
-# need to be accounted for
-sog %>%
-  filter(
-    is.na(num_cpue) &
-      is.na(num_cpua) &
-      is.na(wgt_cpue) &
-      is.na(wgt_cpua)
+# Build model to predict missing wgt_cpue based on num_cpue
+sog_model <- lm(wgt_cpue ~ accepted_name * num_cpue, data = sog)
+summary(sog_model)
+anova(sog_model)
+
+# Extract rows where wgt_cpue in NA
+missing_rows_sog <- sog %>%
+  filter(is.na(wgt_cpue)) %>%
+  mutate(.row_id = which(is.na(sog$wgt_cpue))) # Create a temporary row identifier so know where to put predictions back
+
+# Identify species levels known to the model
+known_species_sog <- sog_model$xlevels$accepted_name
+
+# Keep rows with known species levels
+predictable_rows_sog <- missing_rows_sog %>%
+  filter(accepted_name %in% known_species_sog)
+
+# Predict one row at a time, leaving NA if the prediction fails
+predictions_sog <- lapply(seq_len(nrow(predictable_rows_sog)), function(i) {
+  row <- predictable_rows_sog[i,]
+  tryCatch(
+    as.numeric(predict(sog_model, newdata = row)),
+    error = function(e) NA_real_
+  )
+})
+
+# Combine predictions
+predicted_values_sog <- unlist(predictions_sog)
+
+# Fill successful predictions into the original dataset
+valid_predictions_sog <- !is.na(predicted_values_sog)
+
+sog$wgt_cpue[predictable_rows_sog$.row_id[valid_predictions_sog]] <- predicted_values_sog[valid_predictions_sog]
+
+# Complete the analysis the same as other datasets PLUS remove any negative values which have been filled with the predict function
+sog <- sog %>%
+  filter(wgt_cpue >= 0) %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, depth,
+         haul_dur, wgt_cpue, accepted_name, order, class)
+
+sog_species <- sog %>%
+  filter(wgt_cpue > 0) %>%
+  distinct(
+    lat_cell,
+    lon_cell,
+    accepted_name,
+    order,
+    class
   )
 
-# Check the data structure
-
-# Check for duplicated elasmobranch records
-sog %>%
-  filter(class == "Elasmobranchii") %>%
-  count(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+# **CHECK**
+sog_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
   filter(n > 1)
 
-# Not elasmobranchs so only matters that there is a record of the survey within grid cell
-
-# Create the haul level dataset
-# Records each sampled haul once
 sog_hauls <- sog %>%
   distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
 
-# Check each haul only has one row
+# **CHECK**
 sog_hauls %>%
-  count(survey,haul_id) %>%
+  count(survey, haul_id) %>%
   filter(n > 1)
 
-#------------
-# NUMBER DATA
-#------------
-
-# Only species with at least one number observation are included in the number pool
-# A species with only weight is NOT included
-sog_num_species <- sog %>%
-  filter(!is.na(num_cpue)) %>%
-  distinct(lat_cell, lon_cell, accepted_name, order, class)
-
-# **CHECK** for duplicates
-sog_num_species %>%
-  count(lat_cell, lon_cell, accepted_name, order, class) %>%
-  filter(n > 1)
-
-# Keep the original number records
-# With an indicator showing the species was actually recorded in the haul
-sog_num_records <- sog %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, num_cpue) %>%
-  mutate(num_record = TRUE)
-
-# Complete haul x species dataset
-sog_num_complete <- sog_hauls %>%
+sog_complete <- sog_hauls %>%
   inner_join(
-    sog_num_species,
+    sog_species,
     by = c("lat_cell", "lon_cell"),
     relationship = "many-to-many"
   ) %>%
-  left_join(
-    sog_num_records,
-    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
-    relationship = "many-to-many"
-  ) %>%
-  mutate(
-    # No species record = absence = 0.
-    # Species recorded but number unavailable = NA.
-    num_cpue = if_else(
-      is.na(num_record),
-      0,
-      num_cpue))
-
-# Calculate the mean
-sog_mean_num_cpue <- sog_num_complete %>%
-  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
-  summarise(
-    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
-    n_hauls = n_distinct(haul_id),
-    .groups = "drop")
-
-# **CHECK** Check that any rows with NaN are actually weight-only rows and not
-# rows where data is missing
-sog_mean_num_cpue %>%
-  filter(is.nan(mean_num_cpue)) %>%
-  select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     sog %>%
-      group_by(year, lat_cell, lon_cell, accepted_name) %>%
-      summarise(
-        n_weight = sum(!is.na(wgt_cpue)),
-        n_num = sum(!is.na(num_cpue)),
-        .groups = "drop"
-      ),
-    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue),
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"
+    )
   ) %>%
-  summarise(
-    n_combinations = n(),
-    all_weight_only = all(n_weight > 0 & n_num == 0),
-    n_weight_only = sum(n_weight > 0 & n_num == 0),
-    n_neither = sum(n_weight == 0 & n_num == 0),
-    n_with_number = sum(n_num > 0)
-  )
+  mutate(wgt_cpue = replace_na(wgt_cpue, 0))
 
-# Convert NaN values to NA for easier interpretation
-sog_mean_num__cpue <- sog_mean_num_cpue %>%
-  mutate(mean_num_cpue = if_else(is.nan(mean_num_cpue), NA_real_, mean_num_cpue))
-
-# Filter
-unique(sog_full$class)
-
-sog_num_elasmo_ts <- sog_mean_num_cpue %>%
-  filter(class %in% c("Elasmobranchii", "Holocephali"))
-
-#------------
-# WEIGHT DATA
-#------------
-
-# Only species with at least one weight observation are included in the number pool
-# A species with only number is NOT included
-sog_wgt_species <- sog %>%
-  filter(!is.na(wgt_cpue)) %>%
-  distinct(lat_cell, lon_cell, accepted_name, order, class)
-
-# **CHECK** for duplicates
-sog_wgt_species %>%
-  count(lat_cell, lon_cell, accepted_name, order, class) %>%
-  filter(n > 1)
-
-# Keep the original weight records
-# With an indicator showing the species was actually recorded in the haul
-sog_wgt_records <- sog %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
-  mutate(wgt_record = TRUE)
-
-# Complete haul x species dataset
-sog_wgt_complete <- sog_hauls %>%
-  inner_join(
-    sog_wgt_species,
-    by = c("lat_cell", "lon_cell"),
-    relationship = "many-to-many"
-  ) %>%
-  left_join(
-    sog_wgt_records,
-    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
-    relationship = "many-to-many"
-  ) %>%
-  mutate(
-    # No species record = absence = 0.
-    # Species recorded but number unavailable = NA.
-    wgt_cpue = if_else(
-      is.na(wgt_record),
-      0,
-      wgt_cpue))
-
-# Calculate the mean
-sog_mean_wgt_cpue <- sog_wgt_complete %>%
+sog_mean_wgt_cpue <- sog_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
     mean_wgt_cpue = mean(wgt_cpue, na.rm = TRUE),
-    n_hauls = n_distinct(haul_id),
-    .groups = "drop")
-
-# **CHECK** Check that any rows with NaN are actually weight-only rows and not
-# rows where data is missing
-sog_mean_wgt_cpue %>%
-  filter(is.nan(mean_wgt_cpue)) %>%
-  select(year, lat_cell, lon_cell, accepted_name) %>%
-  left_join(
-    sog %>%
-      group_by(year, lat_cell, lon_cell, accepted_name) %>%
-      summarise(
-        n_num = sum(!is.na(num_cpue)),
-        n_weight = sum(!is.na(wgt_cpue)),
-        .groups = "drop"
-      ),
-    by = c("year", "lat_cell", "lon_cell", "accepted_name")
-  ) %>%
-  summarise(
-    n_combinations = n(),
-    all_number_only = all(n_num > 0 & n_weight == 0),
-    n_num_only = sum(n_num > 0 & n_weight == 0),
-    n_neither = sum(n_weight == 0 & n_num == 0),
-    n_with_weight = sum(n_weight > 0)
+    n_hauls = n(),
+    .groups = "drop"
   )
 
-# Filter
-unique(sog_full$class)
-
-sog_wgt_elasmo_ts <- sog_mean_wgt_cpue %>%
-  filter(class %in% c("Elasmobranchii", "Holocephali"))
-
-# Final checks
-# For each species and spatial cell, determine whether it
-# ever has positive mean number CPUE.
-
-sog_mean_num_cpue %>%
-  group_by(lat_cell, lon_cell, accepted_name) %>%
-  summarise(
-    max_mean_num_cpue = max(
-      mean_num_cpue,
-      na.rm = TRUE),
-    .groups = "drop") %>%
-  summarise(
-    n_species = n(),
-    n_with_positive_cpue = sum(
-      max_mean_num_cpue > 0),
-    n_with_zero_only = sum(
-      max_mean_num_cpue == 0))
-
+# **CHECK**
 sog_mean_wgt_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_wgt_cpue = max(
-      mean_wgt_cpue,
-      na.rm = TRUE),
+    max_mean_wgt_cpue = max(mean_wgt_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(
-      max_mean_wgt_cpue > 0),
-    n_with_zero_only = sum(
-      max_mean_wgt_cpue == 0))
+    n_with_positive_cpue = sum(max_mean_wgt_cpue > 0),
+    n_with_zero_only = sum(max_mean_wgt_cpue == 0)
+  )
+
+unique(sog_full$class)
+
+sog_elasmo_ts <- sog_mean_wgt_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
 
 # Clean house
 rm(sog_env)
 rm(sog_full)
-rm(sog_num_species)
-rm(sog_num_complete)
-rm(sog_wgt_species)
-rm(sog_wgt_records)
-rm(sog_wgt_complete)
-rm(sog_num_records)
 rm(sog_hauls)
+rm(sog_complete)
+rm(sog_model)
+rm(sog_species)
+rm(missing_rows_sog)
+rm(predictable_rows_sog)
+rm(predictions_sog)
+rm(known_species_sog)
+rm(predicted_values_sog)
+rm(predicted_wgt_cpue_sog)
+rm(valid_predictions_sog)
+
+
 
 
 #========================
@@ -2752,17 +2441,43 @@ load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 
      envir = wcann_env)
 wcann_full <- wcann_env$data
 
+# Prepare the dataset
 wcann <- wcann_full %>%
   ungroup() %>%
   mutate(
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
+
+# Build model to predict missing wgt_cpue based on num_cpue
+wcann_model <- lm(wgt_cpue ~ accepted_name * num_cpue, data = wcann)
+summary(wcann_model)
+anova(wcann_model)
+
+# Extract rows where wgt_cpue in NA
+missing_rows_wcann <- wcann %>%
+  filter(is.na(wgt_cpue))
+
+# Predict the missing wgt_cpue values
+predicted_wgt_cpue_wcann <- predict(wcann_model, newdata = missing_rows_wcann)
+
+# Populate the NA values
+wcann[is.na(wcann$wgt_cpue), "wgt_cpue"] <- predicted_wgt_cpue_wcann
+
+# Analysis as usual
+wcann <- wcann %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, wgt_cpue, accepted_name, order, class)
 
 wcann_species <- wcann %>%
-  filter(num_cpue > 0) %>%
+  filter(wgt_cpue > 0) %>%
   distinct(
     lat_cell,
     lon_cell,
@@ -2792,36 +2507,36 @@ wcann_complete <- wcann_hauls %>%
   ) %>%
   left_join(
     wcann %>%
-      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, num_cpue),
+      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue),
     by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"
     )
   ) %>%
-  mutate(num_cpue = replace_na(num_cpue, 0))
+  mutate(wgt_cpue = replace_na(wgt_cpue, 0))
 
-wcann_mean_num_cpue <- wcann_complete %>%
+wcann_mean_wgt_cpue <- wcann_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_wgt_cpue = mean(wgt_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-wcann_mean_num_cpue %>%
+wcann_mean_wgt_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_num_cpue = max(mean_num_cpue),
+    max_mean_wgt_cpue = max(mean_wgt_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
-    n_with_zero_only = sum(max_mean_num_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_wgt_cpue > 0),
+    n_with_zero_only = sum(max_mean_wgt_cpue == 0)
   )
 
 
 unique(wcann_full$class)
 
-wcann_elasmo_ts <- wcann_mean_num_cpue %>%
+wcann_elasmo_ts <- wcann_mean_wgt_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(wcann_env)
@@ -2829,6 +2544,8 @@ rm(wcann_full)
 rm(wcann_species)
 rm(wcann_hauls)
 rm(wcann_complete)
+rm(wcann_model)
+rm(predicted_wgt_cpue_wcann)
 
 
 #======================================
@@ -2854,250 +2571,124 @@ wchg <- wchg_full %>%
         is.na(wgt_cpue) &
         is.na(wgt_cpua)))
 
-# Check that no rows are all NAs (and therefore should not be treated as observations)
-# Can also check for whether there are rows which are only e.g. num_cpua as this would 
-# need to be accounted for
-wchg %>%
-  filter(
-    is.na(num_cpue) &
-      is.na(num_cpua) &
-      is.na(wgt_cpue) &
-      is.na(wgt_cpua)
+# Build model to predict missing wgt_cpue based on num_cpue
+wchg_model <- lm(wgt_cpue ~ accepted_name * num_cpue, data = wchg)
+summary(wchg_model)
+anova(wchg_model)
+
+# Extract rows where wgt_cpue in NA
+missing_rows_wchg <- wchg %>%
+  filter(is.na(wgt_cpue)) %>%
+  mutate(.row_id = which(is.na(wchg$wgt_cpue))) # Create a temporary row identifier so know where to put predictions back
+
+# Identify species levels known to the model
+known_species_wchg <- wchg_model$xlevels$accepted_name
+
+# Keep rows with known species levels
+predictable_rows_wchg <- missing_rows_wchg %>%
+  filter(accepted_name %in% known_species_wchg)
+
+# Predict one row at a time, leaving NA if the prediction fails
+predictions_wchg <- lapply(seq_len(nrow(predictable_rows_wchg)), function(i) {
+  row <- predictable_rows_wchg[i,]
+  tryCatch(
+    as.numeric(predict(wchg_model, newdata = row)),
+    error = function(e) NA_real_
+  )
+})
+
+# Combine predictions
+predicted_values_wchg <- unlist(predictions_wchg)
+
+# Fill successful predictions into the original dataset
+valid_predictions_wchg <- !is.na(predicted_values_wchg)
+
+wchg$wgt_cpue[predictable_rows_wchg$.row_id[valid_predictions_wchg]] <- predicted_values_wchg[valid_predictions_wchg]
+
+# Complete the analysis the same as other datasets PLUS remove any negative values which have been filled with the predict function
+wchg <- wchg %>%
+  filter(wgt_cpue >= 0) %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, depth,
+         haul_dur, wgt_cpue, accepted_name, order, class)
+
+wchg_species <- wchg %>%
+  filter(wgt_cpue > 0) %>%
+  distinct(
+    lat_cell,
+    lon_cell,
+    accepted_name,
+    order,
+    class
   )
 
-# Check the data structure
-
-# Check for duplicated elasmobranch records
-wchg %>%
-  filter(class == "Elasmobranchii") %>%
-  count(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+# **CHECK**
+wchg_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
   filter(n > 1)
 
-wchg %>%
-  filter(
-    class == "Elasmobranchii",
-    survey == "DFO-WCHG",
-    haul_id == "69890-035",
-    year == 2010,
-    accepted_name == "Bathyraja interrupta"
-  )
-
-# Create the haul level dataset
-# Records each sampled haul once
 wchg_hauls <- wchg %>%
   distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
 
-# Check each haul only has one row
+# **CHECK**
 wchg_hauls %>%
-  count(survey,haul_id) %>%
+  count(survey, haul_id) %>%
   filter(n > 1)
 
-#------------
-# NUMBER DATA
-#------------
-
-# Only species with at least one number observation are included in the number pool
-# A species with only weight is NOT included
-wchg_num_species <- wchg %>%
-  filter(!is.na(num_cpue)) %>%
-  distinct(lat_cell, lon_cell, accepted_name, order, class)
-
-# **CHECK** for duplicates
-wchg_num_species %>%
-  count(lat_cell, lon_cell, accepted_name, order, class) %>%
-  filter(n > 1)
-
-# Keep the original number records
-# With an indicator showing the species was actually recorded in the haul
-wchg_num_records <- wchg %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, num_cpue) %>%
-  mutate(num_record = TRUE)
-
-# Complete haul x species dataset
-wchg_num_complete <- wchg_hauls %>%
+wchg_complete <- wchg_hauls %>%
   inner_join(
-    wchg_num_species,
+    wchg_species,
     by = c("lat_cell", "lon_cell"),
     relationship = "many-to-many"
   ) %>%
-  left_join(
-    wchg_num_records,
-    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
-    relationship = "many-to-many"
-  ) %>%
-  mutate(
-    # No species record = absence = 0.
-    # Species recorded but number unavailable = NA.
-    num_cpue = if_else(
-      is.na(num_record),
-      0,
-      num_cpue))
-
-# Calculate the mean
-wchg_mean_num_cpue <- wchg_num_complete %>%
-  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
-  summarise(
-    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
-    n_hauls = n_distinct(haul_id),  # >>> CHANGE: count unique hauls, not records (because duplicated elasmobranch)
-    .groups = "drop")
-
-# **CHECK** Check that any rows with NaN are actually weight-only rows and not
-# rows where data is missing
-wchg_mean_num_cpue %>%
-  filter(is.nan(mean_num_cpue)) %>%
-  select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     wchg %>%
-      group_by(year, lat_cell, lon_cell, accepted_name) %>%
-      summarise(
-        n_weight = sum(!is.na(wgt_cpue)),
-        n_num = sum(!is.na(num_cpue)),
-        .groups = "drop"
-      ),
-    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue),
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"
+    )
   ) %>%
-  summarise(
-    n_combinations = n(),
-    all_weight_only = all(n_weight > 0 & n_num == 0),
-    n_weight_only = sum(n_weight > 0 & n_num == 0),
-    n_neither = sum(n_weight == 0 & n_num == 0),
-    n_with_number = sum(n_num > 0)
-  )
+  mutate(wgt_cpue = replace_na(wgt_cpue, 0))
 
-# Convert NaN values to NA for easier interpretation
-wchg_mean_num_cpue <- wchg_mean_num_cpue %>%
-  mutate(mean_num_cpue = if_else(is.nan(mean_num_cpue), NA_real_, mean_num_cpue))
-
-# Filter
-unique(wchg_full$class)
-
-wchg_num_elasmo_ts <- wchg_mean_num_cpue %>%
-  filter(class %in% c("Elasmobranchii", "Holocephali"))
-
-#------------
-# WEIGHT DATA
-#------------
-
-# Only species with at least one weight observation are included in the number pool
-# A species with only number is NOT included
-wchg_wgt_species <- wchg %>%
-  filter(!is.na(wgt_cpue)) %>%
-  distinct(lat_cell, lon_cell, accepted_name, order, class)
-
-# **CHECK** for duplicates
-wchg_wgt_species %>%
-  count(lat_cell, lon_cell, accepted_name, order, class) %>%
-  filter(n > 1)
-
-# Keep the original weight records
-# With an indicator showing the species was actually recorded in the haul
-wchg_wgt_records <- wchg %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
-  mutate(wgt_record = TRUE)
-
-# Complete haul x species dataset
-wchg_wgt_complete <- wchg_hauls %>%
-  inner_join(
-    wchg_wgt_species,
-    by = c("lat_cell", "lon_cell"),
-    relationship = "many-to-many"
-  ) %>%
-  left_join(
-    wchg_wgt_records,
-    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
-    relationship = "many-to-many"
-  ) %>%
-  mutate(
-    # No species record = absence = 0.
-    # Species recorded but number unavailable = NA.
-    wgt_cpue = if_else(
-      is.na(wgt_record),
-      0,
-      wgt_cpue))
-
-# Calculate the mean
-wchg_mean_wgt_cpue <- wchg_wgt_complete %>%
+wchg_mean_wgt_cpue <- wchg_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
     mean_wgt_cpue = mean(wgt_cpue, na.rm = TRUE),
-    n_hauls = n_distinct(haul_id),  # >>> CHANGE: count unique hauls, not records
-    .groups = "drop")
-
-# **CHECK** Check that any rows with NaN are actually weight-only rows and not
-# rows where data is missing
-wchg_mean_wgt_cpue %>%
-  filter(is.nan(mean_wgt_cpue)) %>%
-  select(year, lat_cell, lon_cell, accepted_name) %>%
-  left_join(
-    wchg %>%
-      group_by(year, lat_cell, lon_cell, accepted_name) %>%
-      summarise(
-        n_num = sum(!is.na(num_cpue)),
-        n_weight = sum(!is.na(wgt_cpue)),
-        .groups = "drop"
-      ),
-    by = c("year", "lat_cell", "lon_cell", "accepted_name")
-  ) %>%
-  summarise(
-    n_combinations = n(),
-    all_number_only = all(n_num > 0 & n_weight == 0),
-    n_num_only = sum(n_num > 0 & n_weight == 0),
-    n_neither = sum(n_weight == 0 & n_num == 0),
-    n_with_weight = sum(n_weight > 0)
+    n_hauls = n(),
+    .groups = "drop"
   )
 
-# Convert NaN values to NA for easier interpretation
-wchg_mean_wgt_cpue <- wchg_mean_wgt_cpue %>%
-  mutate(mean_wgt_cpue = if_else(is.nan(mean_wgt_cpue), NA_real_, mean_wgt_cpue))
-
-# Filter
-unique(wchg_full$class)
-
-wchg_wgt_elasmo_ts <- wchg_mean_wgt_cpue %>%
-  filter(class %in% c("Elasmobranchii", "Holocephali"))
-
-# Final checks
-# For each species and spatial cell, determine whether it
-# ever has positive mean number CPUE.
-
-wchg_mean_num_cpue %>%
-  group_by(lat_cell, lon_cell, accepted_name) %>%
-  summarise(
-    max_mean_num_cpue = max(
-      mean_num_cpue,
-      na.rm = TRUE),
-    .groups = "drop") %>%
-  summarise(
-    n_species = n(),
-    n_with_positive_cpue = sum(
-      max_mean_num_cpue > 0),
-    n_with_zero_only = sum(
-      max_mean_num_cpue == 0))
-
+# **CHECK**
 wchg_mean_wgt_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_wgt_cpue = max(
-      mean_wgt_cpue,
-      na.rm = TRUE),
+    max_mean_wgt_cpue = max(mean_wgt_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(
-      max_mean_wgt_cpue > 0),
-    n_with_zero_only = sum(
-      max_mean_wgt_cpue == 0))
+    n_with_positive_cpue = sum(max_mean_wgt_cpue > 0),
+    n_with_zero_only = sum(max_mean_wgt_cpue == 0)
+  )
+
+unique(wchg_full$class)
+
+wchg_elasmo_ts <- wchg_mean_wgt_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
 
 # Clean house
 rm(wchg_env)
 rm(wchg_full)
-rm(wchg_num_species)
-rm(wchg_num_complete)
-rm(wchg_wgt_species)
-rm(wchg_wgt_records)
-rm(wchg_wgt_complete)
-rm(wchg_num_records)
 rm(wchg_hauls)
+rm(wchg_complete)
+rm(wchg_model)
+rm(wchg_species)
+rm(missing_rows_wchg)
+rm(predictable_rows_wchg)
+rm(predictions_wchg)
+rm(known_species_wchg)
+rm(predicted_values_wchg)
+rm(valid_predictions_wchg)
+
+
 
 
 #========================================
@@ -3108,14 +2699,41 @@ load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 
      envir = wctri_env)
 wctri_full <- wctri_env$data
 
+# Prepare the dataset
 wctri <- wctri_full %>%
   ungroup() %>%
   mutate(
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
+
+# Build model to predict missing wgt_cpue based on num_cpue
+wctri_model <- lm(num_cpue ~ accepted_name * wgt_cpue, data = wctri)
+summary(wctri_model)
+anova(wctri_model)
+
+# Extract rows where wgt_cpue in NA
+missing_rows_wctri <- wctri %>%
+  filter(is.na(num_cpue))
+
+# Predict the missing wgt_cpue values
+predicted_num_cpue_wctri <- predict(wctri_model, newdata = missing_rows_wctri)
+
+# Populate the NA values
+wctri[is.na(wctri$num_cpue), "num_cpue"] <- predicted_num_cpue_wctri
+
+# Analysis as usual 
+wctri <- wctri %>%
+  filter(num_cpue >= 0) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, num_cpue, accepted_name, order, class)
 
 wctri_species <- wctri %>%
   filter(num_cpue > 0) %>%
@@ -3185,6 +2803,8 @@ rm(wctri_full)
 rm(wctri_species)
 rm(wctri_hauls)
 rm(wctri_complete)
+rm(wctri_model)
+rm(predicted_num_cpue_wctri)
 
 
 #===========================================
@@ -3210,243 +2830,123 @@ wcvi <- wcvi_full %>%
         is.na(wgt_cpue) &
         is.na(wgt_cpua)))
 
-# Check that no rows are all NAs (and therefore should not be treated as observations)
-# Can also check for whether there are rows which are only e.g. num_cpua as this would 
-# need to be accounted for
-wcvi %>%
-  filter(
-    is.na(num_cpue) &
-      is.na(num_cpua) &
-      is.na(wgt_cpue) &
-      is.na(wgt_cpua)
+
+# Build model to predict missing wgt_cpue based on num_cpue
+wcvi_model <- lm(wgt_cpue ~ accepted_name * num_cpue, data = wcvi)
+summary(wcvi_model)
+anova(wcvi_model)
+
+# Extract rows where wgt_cpue in NA
+missing_rows_wcvi <- wcvi %>%
+  filter(is.na(wgt_cpue)) %>%
+  mutate(.row_id = which(is.na(wcvi$wgt_cpue))) # Create a temporary row identifier so know where to put predictions back
+
+# Identify species levels known to the model
+known_species_wcvi <- wcvi_model$xlevels$accepted_name
+
+# Keep rows with known species levels
+predictable_rows_wcvi <- missing_rows_wcvi %>%
+  filter(accepted_name %in% known_species_wcvi)
+
+# Predict one row at a time, leaving NA if the prediction fails
+predictions_wcvi <- lapply(seq_len(nrow(predictable_rows_wcvi)), function(i) {
+  row <- predictable_rows_wcvi[i,]
+  tryCatch(
+    as.numeric(predict(wcvi_model, newdata = row)),
+    error = function(e) NA_real_
+  )
+})
+
+# Combine predictions
+predicted_values_wcvi <- unlist(predictions_wcvi)
+
+# Fill successful predictions into the original dataset
+valid_predictions_wcvi <- !is.na(predicted_values_wcvi)
+
+wcvi$wgt_cpue[predictable_rows_wcvi$.row_id[valid_predictions_wcvi]] <- predicted_values_wcvi[valid_predictions_wcvi]
+
+# Complete the analysis the same as other datasets PLUS remove any negative values which have been filled with the predict function
+wcvi <- wcvi %>%
+  filter(wgt_cpue >= 0) %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, depth,
+         haul_dur, wgt_cpue, accepted_name, order, class)
+
+wcvi_species <- wcvi %>%
+  filter(wgt_cpue > 0) %>%
+  distinct(
+    lat_cell,
+    lon_cell,
+    accepted_name,
+    order,
+    class
   )
 
-# Check the data structure
-
-# Check for duplicated elasmobranch records
-wcvi %>%
-  filter(class == "Elasmobranchii") %>%
-  count(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+# **CHECK**
+wcvi_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class) %>%
   filter(n > 1)
 
-# Not elasmobranchs so only matters that there is a record of the survey within grid cell
-
-# Create the haul level dataset
-# Records each sampled haul once
 wcvi_hauls <- wcvi %>%
   distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
 
-# Check each haul only has one row
+# **CHECK**
 wcvi_hauls %>%
-  count(survey,haul_id) %>%
+  count(survey, haul_id) %>%
   filter(n > 1)
 
-#------------
-# NUMBER DATA
-#------------
-
-# Only species with at least one number observation are included in the number pool
-# A species with only weight is NOT included
-wcvi_num_species <- wcvi %>%
-  filter(!is.na(num_cpue)) %>%
-  distinct(lat_cell, lon_cell, accepted_name, order, class)
-
-# **CHECK** for duplicates
-wcvi_num_species %>%
-  count(lat_cell, lon_cell, accepted_name, order, class) %>%
-  filter(n > 1)
-
-# Keep the original number records
-# With an indicator showing the species was actually recorded in the haul
-wcvi_num_records <- wcvi %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, num_cpue) %>%
-  mutate(num_record = TRUE)
-
-# Complete haul x species dataset
-wcvi_num_complete <- wcvi_hauls %>%
+wcvi_complete <- wcvi_hauls %>%
   inner_join(
-    wcvi_num_species,
+    wcvi_species,
     by = c("lat_cell", "lon_cell"),
     relationship = "many-to-many"
   ) %>%
-  left_join(
-    wcvi_num_records,
-    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
-    relationship = "many-to-many"
-  ) %>%
-  mutate(
-    # No species record = absence = 0.
-    # Species recorded but number unavailable = NA.
-    num_cpue = if_else(
-      is.na(num_record),
-      0,
-      num_cpue))
-
-# Calculate the mean
-wcvi_mean_num_cpue <- wcvi_num_complete %>%
-  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
-  summarise(
-    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
-    n_hauls = n_distinct(haul_id),
-    .groups = "drop")
-
-# **CHECK** Check that any rows with NaN are actually weight-only rows and not
-# rows where data is missing
-wcvi_mean_num_cpue %>%
-  filter(is.nan(mean_num_cpue)) %>%
-  select(year, lat_cell, lon_cell, accepted_name) %>%
   left_join(
     wcvi %>%
-      group_by(year, lat_cell, lon_cell, accepted_name) %>%
-      summarise(
-        n_weight = sum(!is.na(wgt_cpue)),
-        n_num = sum(!is.na(num_cpue)),
-        .groups = "drop"
-      ),
-    by = c("year", "lat_cell", "lon_cell", "accepted_name")
+      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue),
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"
+    )
   ) %>%
-  summarise(
-    n_combinations = n(),
-    all_weight_only = all(n_weight > 0 & n_num == 0),
-    n_weight_only = sum(n_weight > 0 & n_num == 0),
-    n_neither = sum(n_weight == 0 & n_num == 0),
-    n_with_number = sum(n_num > 0)
-  )
+  mutate(wgt_cpue = replace_na(wgt_cpue, 0))
 
-# Convert NaN values to NA for easier interpretation
-wcvi_mean_num_cpue <- wcvi_mean_num_cpue %>%
-  mutate(mean_num_cpue = if_else(is.nan(mean_num_cpue), NA_real_, mean_num_cpue))
-
-# Filter
-unique(wcvi_full$class)
-
-wcvi_num_elasmo_ts <- wcvi_mean_num_cpue %>%
-  filter(class %in% c("Elasmobranchii", "Holocephali"))
-
-#------------
-# WEIGHT DATA
-#------------
-
-# Only species with at least one weight observation are included in the number pool
-# A species with only number is NOT included
-wcvi_wgt_species <- wcvi %>%
-  filter(!is.na(wgt_cpue)) %>%
-  distinct(lat_cell, lon_cell, accepted_name, order, class)
-
-# **CHECK** for duplicates
-wcvi_wgt_species %>%
-  count(lat_cell, lon_cell, accepted_name, order, class) %>%
-  filter(n > 1)
-
-# Keep the original weight records
-# With an indicator showing the species was actually recorded in the haul
-wcvi_wgt_records <- wcvi %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue) %>%
-  mutate(wgt_record = TRUE)
-
-# Complete haul x species dataset
-wcvi_wgt_complete <- wcvi_hauls %>%
-  inner_join(
-    wcvi_wgt_species,
-    by = c("lat_cell", "lon_cell"),
-    relationship = "many-to-many"
-  ) %>%
-  left_join(
-    wcvi_wgt_records,
-    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"),
-    relationship = "many-to-many"
-  ) %>%
-  mutate(
-    # No species record = absence = 0.
-    # Species recorded but number unavailable = NA.
-    wgt_cpue = if_else(
-      is.na(wgt_record),
-      0,
-      wgt_cpue))
-
-# Calculate the mean
-wcvi_mean_wgt_cpue <- wcvi_wgt_complete %>%
+wcvi_mean_wgt_cpue <- wcvi_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
     mean_wgt_cpue = mean(wgt_cpue, na.rm = TRUE),
-    n_hauls = n_distinct(haul_id),
-    .groups = "drop")
-
-# **CHECK** Check that any rows with NaN are actually weight-only rows and not
-# rows where data is missing
-wcvi_mean_wgt_cpue %>%
-  filter(is.nan(mean_wgt_cpue)) %>%
-  select(year, lat_cell, lon_cell, accepted_name) %>%
-  left_join(
-    wcvi %>%
-      group_by(year, lat_cell, lon_cell, accepted_name) %>%
-      summarise(
-        n_num = sum(!is.na(num_cpue)),
-        n_weight = sum(!is.na(wgt_cpue)),
-        .groups = "drop"
-      ),
-    by = c("year", "lat_cell", "lon_cell", "accepted_name")
-  ) %>%
-  summarise(
-    n_combinations = n(),
-    all_number_only = all(n_num > 0 & n_weight == 0),
-    n_num_only = sum(n_num > 0 & n_weight == 0),
-    n_neither = sum(n_weight == 0 & n_num == 0),
-    n_with_weight = sum(n_weight > 0)
+    n_hauls = n(),
+    .groups = "drop"
   )
 
-# Convert NaN values to NA for easier interpretation
-wcvi_mean_wgt_cpue <- wcvi_mean_wgt_cpue %>%
-  mutate(mean_wgt_cpue = if_else(is.nan(mean_wgt_cpue), NA_real_, mean_wgt_cpue))
-
-# Filter
-unique(wcvi_full$class)
-
-wcvi_wgt_elasmo_ts <- wcvi_mean_wgt_cpue %>%
-  filter(class %in% c("Elasmobranchii", "Holocephali"))
-
-# Final checks
-# For each species and spatial cell, determine whether it
-# ever has positive mean number CPUE.
-
-wcvi_mean_num_cpue %>%
-  group_by(lat_cell, lon_cell, accepted_name) %>%
-  summarise(
-    max_mean_num_cpue = max(
-      mean_num_cpue,
-      na.rm = TRUE),
-    .groups = "drop") %>%
-  summarise(
-    n_species = n(),
-    n_with_positive_cpue = sum(
-      max_mean_num_cpue > 0),
-    n_with_zero_only = sum(
-      max_mean_num_cpue == 0))
-
+# **CHECK**
 wcvi_mean_wgt_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_wgt_cpue = max(
-      mean_wgt_cpue,
-      na.rm = TRUE),
+    max_mean_wgt_cpue = max(mean_wgt_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(
-      max_mean_wgt_cpue > 0),
-    n_with_zero_only = sum(
-      max_mean_wgt_cpue == 0))
+    n_with_positive_cpue = sum(max_mean_wgt_cpue > 0),
+    n_with_zero_only = sum(max_mean_wgt_cpue == 0)
+  )
+
+unique(wcvi_full$class)
+
+wcvi_elasmo_ts <- wcvi_mean_wgt_cpue %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
 
 # Clean house
 rm(wcvi_env)
 rm(wcvi_full)
-rm(wcvi_num_species)
-rm(wcvi_num_complete)
-rm(wcvi_wgt_species)
-rm(wcvi_wgt_records)
-rm(wcvi_wgt_complete)
-rm(wcvi_num_records)
 rm(wcvi_hauls)
+rm(wcvi_complete)
+rm(wcvi_model)
+rm(wcvi_species)
+rm(missing_rows_wcvi)
+rm(predictable_rows_wcvi)
+rm(predictions_wcvi)
+rm(known_species_wcvi)
+rm(predicted_values_wcvi)
+rm(valid_predictions_wcvi)
 
 
 
@@ -3456,13 +2956,12 @@ rm(wcvi_hauls)
 
 fishglob_ts <- bind_rows(ai_elasmo_ts, bits_elasmo_ts, ebs_elasmo_ts, evhoe_elasmo_ts, 
                          fr_elasmo_ts, gmex_elasmo_ts, goa_elasmo_ts, gsln_elasmo_ts, 
-                         gsls_elasmo_ts, hs_num_elasmo_ts, hs_wgt_elasmo_ts, ie_elasmo_ts,
-                         neus_elasmo_ts, nigfs_elasmo_ts, nor_elasmo_ts, ns_elasmo_ts, 
-                         pt_elasmo_ts, qcs_num_elasmo_ts, qcs_wgt_elasmo_ts, rock_elasmo_ts, 
-                         scs_elasmo_ts, seus_elasmo_ts, sog_num_elasmo_ts, sog_wgt_elasmo_ts,
-                         sparsa_elasmo_ts, spnorth_elasmo_ts, spporc_elasmo_ts, swc_elasmo_ts,
-                         wcann_elasmo_ts, wchg_num_elasmo_ts, wchg_wgt_elasmo_ts, wctri_elasmo_ts,
-                         wcvi_num_elasmo_ts, wcvi_wgt_elasmo_ts) %>%
+                         gsls_elasmo_ts, hs_elasmo_ts, ie_elasmo_ts, neus_elasmo_ts, 
+                         nigfs_elasmo_ts, nor_elasmo_ts, ns_elasmo_ts, pt_elasmo_ts, 
+                         qcs_elasmo_ts, rock_elasmo_ts, scs_elasmo_ts, seus_elasmo_ts, 
+                         sog_elasmo_ts, sparsa_elasmo_ts, spnorth_elasmo_ts, spporc_elasmo_ts, 
+                         swc_elasmo_ts, wcann_elasmo_ts, wchg_elasmo_ts, wctri_elasmo_ts,
+                         wcvi_elasmo_ts) %>%
   filter( # Removing rows which are all NA
     !(is.na(mean_num_cpue) & is.na(mean_wgt_cpue) & is.na(mean_wgt_cpua))) %>%
   select(survey, year, lat_cell, lon_cell, accepted_name, order, class, mean_num_cpue,
