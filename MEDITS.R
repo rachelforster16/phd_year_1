@@ -141,52 +141,60 @@ write_csv(MEDITS_nw_elasmo_ts, "MEDITS_nw_timeseries.csv")
 # MEDITS: Spanish Continental Shelf
 #==================================
 
-MEDITS_spain_occurrence <- read_tsv("MEDITS_spain_occurrence.txt") %>%
-  select(id, scientificName, class, order)
-MEDITS_spain_extendedmeasurement_all <- read_tsv("MEDITS_spain_extendedmeasurementorfact.txt") %>%
-  select(id, measurementType, measurementValue)
-MEDITS_spain_event <- read_tsv("MEDITS_spain_event.txt") %>%
-  select(id, year, decimalLatitude, decimalLongitude)
+MEDITS_spain_occurrence <- read_tsv("MEDITS_spain_occurrence.txt")
+MEDITS_spain_extendedmeasurement<- read_tsv("MEDITS_spain_extendedmeasurementorfact.txt")
+MEDITS_spain_event <- read_tsv("MEDITS_spain_event.txt")
 
-MEDITS_spain_extendedmeasurement_all %>%
-  count(measurementType, sort = TRUE)
+MEDITS_spain_measurement_occurrence <- left_join(MEDITS_spain_extendedmeasurement, MEDITS_spain_occurrence, by = "occurrenceID")
+MEDITS_spain_all <- left_join(MEDITS_spain_measurement_occurrence, MEDITS_spain_event, by = "eventID")
 
-MEDITS_spain_extendedmeasurement <- MEDITS_spain_extendedmeasurement_all %>%
-  filter(measurementType == "Count (in assayed sample) of biological entity specified elsewhere")
+# Filter data so there are no measurements of e.g. net size etc.
+MEDITS_spain_full <- MEDITS_spain_all %>%
+  select(collectionCode, id.x, occurrenceID, eventID, measurementType, measurementValue, scientificName, year.y, 
+         decimalLatitude.y, decimalLongitude.y, class, order) %>%
+  filter(measurementType %in% c("Count (in assayed sample) of biological entity specified elsewhere",
+                                "Abundance of biological entity specified elsewhere per unit area of the bed",
+                                "Wet weight biomass of biological entity specified elsewhere per unit area of the bed"))
 
-MEDITS_spain_occurrence_measurement <- left_join(MEDITS_spain_occurrence, MEDITS_spain_extendedmeasurement, by = "id", relationship = "many-to-many")
-MEDITS_spain_full <- left_join(MEDITS_spain_occurrence_measurement, MEDITS_spain_event, by = "id", relationship = "many-to-many") %>%
-  rename(accepted_name = scientificName)
 
-MEDITS_spain_full <- MEDITS_spain_full %>%
-  ungroup() %>%
-  mutate(
-    lat_cell = floor(decimalLatitude),
-    lon_cell = floor(decimalLongitude)
+# Rearrange the data so that each occurrence ID has a column for count, abundance, and weight
+MEDITS_spain_full_wide <- MEDITS_spain_full %>%
+  pivot_wider(
+    names_from = measurementType,
+    values_from = measurementValue
+  ) %>%
+  rename(
+    count = "Count (in assayed sample) of biological entity specified elsewhere",
+    abundance = "Abundance of biological entity specified elsewhere per unit area of the bed",
+    weight = "Wet weight biomass of biological entity specified elsewhere per unit area of the bed"
   )
 
-# **CHECK** Each id corresponds with only one year/grid cell combination
-MEDITS_spain_full %>%
+# Make the column names consistent with other databases
+MEDITS_spain <- MEDITS_spain_full_wide %>%
+  mutate(
+    lat_cell = floor(decimalLatitude.y),
+    lon_cell = floor(decimalLongitude.y),
+    abundance = as.numeric(abundance)
+  ) %>%
+  rename(survey = collectionCode, haul_id = id.x, year = year.y, num_cpua = abundance, accepted_name = scientificName) %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, num_cpua, accepted_name, order, class)
+  
+
+# **CHECK** Each haul_id corresponds with only one year/grid cell combination
+MEDITS_spain %>%
   distinct(
-    id,
+    haul_id,
     year,
     lat_cell,
     lon_cell
   ) %>%
-  count(id) %>%
+  count(haul_id) %>%
   filter(n > 1)
 
-# Rename columns
-MEDITS_spain <- MEDITS_spain_full %>%
-  mutate(survey = "MEDITS_spain",
-    num_cpue = as.numeric(measurementValue)) %>%
-  rename(haul_id = id) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, num_cpue,
-    accepted_name, order, class)
 
 # Find species that have ever been recorded in a grid square
 MEDITS_spain_species <- MEDITS_spain %>%
-  filter(num_cpue > 0) %>% 
+  filter(num_cpua > 0) %>% 
   distinct(lat_cell, lon_cell, accepted_name, order, class)
 
 # **CHECK** Only one row per species per grid cell
@@ -214,16 +222,215 @@ MEDITS_spain_complete <- MEDITS_spain_hauls %>%
   left_join(
     MEDITS_spain %>%
       select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, 
-             order, class, num_cpue),
+             order, class, num_cpua),
     by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name",
            "order", "class"
+    )
+  ) %>%
+  mutate(num_cpua = replace_na(num_cpua, 0))
+
+# Now calculate mean_cpue of all events in a grid square, per species, per year, per survey
+MEDITS_spain_mean_num_cpua <- MEDITS_spain_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+  summarise(
+    mean_num_cpua = mean(num_cpua, na.rm = TRUE),
+    n_hauls = n(),
+    .groups = "drop"
+  )
+
+# **CHECK** Every species/grid cell combination has >1 positive combination
+MEDITS_spain_mean_num_cpua %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_num_cpua = max(mean_num_cpua),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpua = sum(max_mean_num_cpua > 0),
+    n_with_zero_only = sum(max_mean_num_cpua == 0)
+  )
+
+# Filter for chondrichthyes (elasmobranchii and holocephali/chimaeriformes)
+unique(MEDITS_spain$class)
+
+MEDITS_spain_elasmo_ts <- MEDITS_spain_mean_num_cpua %>%
+  filter(class %in% c("Elasmobranchii", "Holocephali"))
+
+# Clean house
+rm(MEDITS_spain_all)
+rm(MEDITS_spain_event)
+rm(MEDITS_spain_extendedmeasurement)
+rm(MEDITS_spain_full)
+rm(MEDITS_spain_species)
+rm(MEDITS_spain_hauls)
+rm(MEDITS_spain_complete)
+rm(MEDITS_spain_full_wide)
+rm(MEDITS_spain_measurement_occurrence)
+rm(MEDITS_spain_occurrence)
+
+write_csv(MEDITS_spain_elasmo_ts, "MEDITS_spain_timeseries.csv")
+
+
+
+#==================
+# MEDITS: Black Sea
+#==================
+
+# Load RoME - contains data on species codes used in Black Sea survey data
+# install.packages("RoME")
+library(RoME)
+
+# Load the TM (taxonomic list) data
+data("TM_list")
+
+# Set up a dataframe with the MEDITS codes and corresponding species names
+Sp_Medits <- data.frame(
+  MeditsCode = as.character(TM_list$MeditsCode),
+  Scientific_name = as.character(
+    TM_list[["Scientific.Name.................................................valid"]]
+  )
+)
+
+# Load the black sea data
+MEDITS_blacksea_speciescatch <- read.csv("MEDITS_blacksea_speciescatch.csv")
+
+# Combine the genus and species columns into a MeditsCode column
+MEDITS_blacksea_speciescatch <- MEDITS_blacksea_speciescatch %>%
+  unite(MeditsCode, genus, species, sep = "")
+
+# Check how many codes match the TM list for each reference list
+MEDITS_blacksea_speciescatch %>%
+  distinct(lref, MeditsCode) %>%
+  mutate(MeditsCode = as.character(MeditsCode)) %>%
+  left_join(Sp_Medits, by = "MeditsCode") %>%
+  group_by(lref) %>%
+  summarise(
+    total_codes = n(),
+    matched = sum(!is.na(Scientific_name)),
+    unmatched = sum(is.na(Scientific_name)),
+    .groups = "drop"
+  )
+
+# Find which species haven't had codes matched
+unmatched <- MEDITS_blacksea_speciescatch %>%
+  distinct(lref, MeditsCode) %>%
+  mutate(MeditsCode = as.character(MeditsCode)) %>%
+  anti_join(tm_lookup, by = "MeditsCode") %>%
+  arrange(lref, MeditsCode) %>% 
+  as_tibble()
+
+head(unmatched, 8)
+
+# Manually add names for those where the code and species name can be found online (e.g. the MEDITS handbook)
+manual_names <- tibble(
+  MeditsCode = c("ARGRACU", "ASCDCEA", "BUCCSPP", "FMBONEL", "GASTRDA", "ILLESPP", "PTEDGRI", "SOLEAEG"),
+  Scientific_name = c("Argyropelecus aculeatus", "Ascidiacea spp.", "Buccinum spp", "Bonellia viridis", "Gastropoda spp.", 
+                      "Illex spp.", "Pteroeides griseum", "Solea aegyptiaca")
+)
+
+Sp_Medits <- bind_rows(Sp_Medits, manual_names) %>%
+  distinct(MeditsCode, .keep_all = TRUE) %>%
+  arrange(MeditsCode)
+
+write_csv(Sp_Medits, "Sp_Medits.csv")
+
+
+# Add the species name column to the black sea data
+MEDITS_blacksea_speciescatch_names <- left_join(MEDITS_blacksea_speciescatch, Sp_Medits, by = "MeditsCode")
+
+# Load haul data
+MEDITS_blacksea_haul <- read.csv("MEDITS_blacksea_haul.csv")
+
+# Changing latitude and longitude columns so they are in degrees (not degrees minutes seconds)
+dms_to_decimal <- function(x) {
+  x <- as.numeric(x)
+  degrees <- floor(x/100)
+  minutes <- x - degrees * 100
+  degrees + minutes / 60
+}
+
+MEDITS_blacksea_haul <- MEDITS_blacksea_haul %>%
+  mutate(
+    latitude = dms_to_decimal(hauling_latitude),
+    longitude = dms_to_decimal(hauling_longitude)
+  )
+
+# Create unique code for each survey with country, area, vessel, year, month, haul number?
+MEDITS_blacksea_speciescatch_names <- MEDITS_blacksea_speciescatch_names %>%
+  unite(haul_id, country, area, vessel, year, month, haul_number, sep = ",", remove = FALSE)
+
+MEDITS_blacksea_haul <- MEDITS_blacksea_haul %>%
+  unite(haul_id, country, area, vessel, year, month, haul_number, sep = ",", remove = FALSE)
+
+# Join datasets by haul number
+MEDITS_blacksea_full <- left_join(MEDITS_blacksea_speciescatch_names, MEDITS_blacksea_haul, by = "haul_id") %>%
+  rename(accepted_name = Scientific_name) %>%
+  left_join(taxonomy_lookup, by = "accepted_name")
+
+# Make columns consistent with other databases
+MEDITS_blacksea <- MEDITS_blacksea_full %>%
+  mutate(
+    survey = "MEDITS_blacksea",
+    lat_cell = floor(latitude),
+    lon_cell = floor(longitude),
+    num_cpue = (nbtot/hauling_duration)
+  ) %>%
+  rename(year = year.x) %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, num_cpue, accepted_name, order, class, superclass)
+
+
+# **CHECK** Each haul_id corresponds with only one year/grid cell combination
+MEDITS_blacksea %>%
+  distinct(
+    haul_id,
+    year,
+    lat_cell,
+    lon_cell
+  ) %>%
+  count(haul_id) %>%
+  filter(n > 1)
+
+
+# Find species that have ever been recorded in a grid square
+MEDITS_blacksea_species <- MEDITS_blacksea %>%
+  filter(num_cpue > 0) %>% 
+  distinct(lat_cell, lon_cell, accepted_name, order, class, superclass)
+
+# **CHECK** Only one row per species per grid cell
+MEDITS_blacksea_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class, superclass) %>%
+  filter(n > 1)
+
+# Get a list of all the individual hauls
+# As may have many rows per haul
+MEDITS_blacksea_hauls <- MEDITS_blacksea %>%
+  distinct(survey, haul_id, year, lat_cell, lon_cell)
+
+# **CHECK** Only one row per haul
+MEDITS_blacksea_hauls %>%
+  count(survey, haul_id) %>%
+  filter(n > 1)
+
+# Create every possible haul x species combination
+MEDITS_blacksea_complete <- MEDITS_blacksea_hauls %>%
+  inner_join(
+    MEDITS_blacksea_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    MEDITS_blacksea %>%
+      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, 
+             order, class, superclass, num_cpue),
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name",
+           "order", "class", "superclass"
     )
   ) %>%
   mutate(num_cpue = replace_na(num_cpue, 0))
 
 # Now calculate mean_cpue of all events in a grid square, per species, per year, per survey
-MEDITS_spain_mean_num_cpue <- MEDITS_spain_complete %>%
-  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
+MEDITS_blacksea_mean_num_cpue <- MEDITS_blacksea_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class, superclass) %>%
   summarise(
     mean_num_cpue = mean(num_cpue, na.rm = TRUE),
     n_hauls = n(),
@@ -231,7 +438,7 @@ MEDITS_spain_mean_num_cpue <- MEDITS_spain_complete %>%
   )
 
 # **CHECK** Every species/grid cell combination has >1 positive combination
-MEDITS_spain_mean_num_cpue %>%
+MEDITS_blacksea_mean_num_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
     max_mean_num_cpue = max(mean_num_cpue),
@@ -243,29 +450,23 @@ MEDITS_spain_mean_num_cpue %>%
   )
 
 # Filter for chondrichthyes (elasmobranchii and holocephali/chimaeriformes)
-unique(MEDITS_spain$class)
+unique(MEDITS_blacksea$superclass)
 
-MEDITS_spain_elasmo_ts <- MEDITS_spain_mean_num_cpue %>%
-  filter(class %in% c("Elasmobranchii", "Holocephali"))
+MEDITS_blacksea_elasmo_ts <- MEDITS_blacksea_mean_num_cpue %>%
+  filter(class %in% c("Chondrichthyes"))
 
 # Clean house
-rm(MEDITS_spain_event)
-rm(MEDITS_spain_extendedmeasurement)
-rm(MEDITS_spain_extendedmeasurement_all)
-rm(MEDITS_spain_occurrence)
-rm(MEDITS_spain_occurrence_measurement)
-rm(MEDITS_spain_full)
-rm(MEDITS_spain_species)
-rm(MEDITS_spain_hauls)
-rm(MEDITS_spain_complete)
+rm(MEDITS_blacksea_haul)
+rm(MEDITS_blacksea_speciescatch)
+rm(MEDITS_blacksea_speciescatch_names)
+rm(MEDITS_blacksea_full)
+rm(MEDITS_blacksea_species)
+rm(MEDITS_blacksea_hauls)
+rm(MEDITS_blacksea_complete)
+rm(manual_names)
+rm(unmatched)
 
-
-write_csv(MEDITS_spain_elasmo_ts, "MEDITS_spain_timeseries.csv")
-
-
-
-
-
+write_csv(MEDITS_blacksea_elasmo_ts, "MEDITS_blacksea_timeseries.csv")
 
 
 
