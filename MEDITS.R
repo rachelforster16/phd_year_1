@@ -315,7 +315,7 @@ MEDITS_blacksea_speciescatch %>%
 unmatched <- MEDITS_blacksea_speciescatch %>%
   distinct(lref, MeditsCode) %>%
   mutate(MeditsCode = as.character(MeditsCode)) %>%
-  anti_join(tm_lookup, by = "MeditsCode") %>%
+  anti_join(Sp_Medits, by = "MeditsCode") %>%
   arrange(lref, MeditsCode) %>% 
   as_tibble()
 
@@ -453,7 +453,7 @@ MEDITS_blacksea_mean_num_cpue %>%
 unique(MEDITS_blacksea$superclass)
 
 MEDITS_blacksea_elasmo_ts <- MEDITS_blacksea_mean_num_cpue %>%
-  filter(class %in% c("Chondrichthyes"))
+  filter(superclass %in% c("Chondrichthyes"))
 
 # Clean house
 rm(MEDITS_blacksea_haul)
