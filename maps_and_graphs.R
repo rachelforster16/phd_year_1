@@ -30,6 +30,13 @@ MEDITS_nw_ts <- read.csv("MEDITS_nw_timeseries.csv") %>%
   mutate(database = "MEDITS_nw")
 MEDITS_spain_ts <- read.csv("MEDITS_spain_timeseries.csv") %>%
   mutate(database = "MEDITS_spain")
+MEDITS_blacksea_ts <- read.csv("MEDITS_blacksea_timeseries.csv") %>%
+  mutate(database = "MEDITS_blacksea")
+IATTC_ts <- read.csv("IATTC_timeseries.csv") %>%
+  mutate(database = "IATTC")
+sharkipedia_ts <- read.csv("sharkipedia_timeseries.csv") %>%
+  mutate(database = "sharkipedia", survey = "sharkipedia")
+  
 
 #============================
 # Map with surveyed locations
@@ -42,8 +49,8 @@ world <- ne_countries(
 
 # Creating a dataframe with each lat cell and lon cell combination which has been surveyed
 surveyed_cells <- bind_rows(fishglob_ts, biotime_ts, IMOS_ts, timefish_ts, soviet_trawl_ts, NSW_ts,
-                            MEDITS_nw_ts, MEDITS_spain_ts) %>%
-  distinct(survey, lat_cell, lon_cell)
+                            MEDITS_nw_ts, MEDITS_spain_ts, MEDITS_blacksea_ts, IATTC_ts, sharkipedia_ts) %>%
+  distinct(database, lat_cell, lon_cell)
 
 # Turning this into geographic polygons
 surveyed_cells_sf <- surveyed_cells %>%
@@ -63,7 +70,7 @@ surveyed_cells_sf <- surveyed_cells %>%
     ncol = 2, byrow = TRUE))))) %>%
   ungroup() %>%
   st_as_sf(crs = 4326) %>%
-  select(survey, lat_cell, lon_cell, geometry)
+  select(database, lat_cell, lon_cell, geometry)
 
 
 survey_coverage_map <- ggplot() +
@@ -75,14 +82,16 @@ survey_coverage_map <- ggplot() +
   ) +
   geom_sf(
     data = surveyed_cells_sf,
-    aes(fill = survey),
+    aes(fill = database),
     colour = "white",
     linewidth = 0.1
   ) +
   coord_sf() +
   theme_minimal() +
+  theme(legend.position = "bottom") +
   labs(
-    title = "Surveyed locations (with Chondrichthyes timeseries data)"
+    title = "Surveyed locations (with Chondrichthyes timeseries data)",
+    fill = "Database"
   )
 
 survey_coverage_map
@@ -97,7 +106,7 @@ survey_coverage_map
 # All data?????
 
 all_timeseries <- bind_rows(fishglob_ts, biotime_ts, IMOS_ts, timefish_ts, soviet_trawl_ts, NSW_ts,
-                            MEDITS_nw_ts, MEDITS_spain_ts)
+                            MEDITS_nw_ts, MEDITS_spain_ts, MEDITS_blacksea_ts, IATTC_ts)
 
 
 
