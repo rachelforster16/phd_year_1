@@ -16,7 +16,6 @@ library(broom)
 #=====================
 # Aleutian Island (AI)
 #=====================
-
 ai_env <- new.env()
 load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 1/R code and data/Raw data/AI_clean.RData",
      envir = ai_env)
@@ -29,8 +28,18 @@ ai <- ai_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua))) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
          haul_dur, wgt_cpua, accepted_name, order, class)
+
+# **CHECK** Not losing any hauls
+n_distinct(ai_full$haul_id)   # before
+n_distinct(ai$haul_id)        # after
 
 # Firstly, find species that have ever been recorded in each grid square
 ai_species <- ai %>%
@@ -127,8 +136,18 @@ bits <- bits_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua))) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, num_cpue, accepted_name, order, class)
+
+# **CHECK** Not losing any hauls
+n_distinct(bits_full$haul_id)   # before
+n_distinct(bits$haul_id)        # after
 
 # Firstly, find species that have ever been recorded in each grid square
 bits_species <- bits %>%
@@ -147,8 +166,10 @@ bits_species %>%
   filter(n > 1)
 
 # Get a list of all the individual hauls
-# As may have many rows per haul
-bits_hauls <- bits %>%
+# Using original full dataset as some hauls were lost in the filtering 
+bits_hauls <- bits_full %>%
+  ungroup() %>%
+  mutate(lat_cell = floor(latitude), lon_cell = floor(longitude)) %>%
   distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
 
 # **CHECK** Only one row per haul
@@ -225,8 +246,18 @@ ebs <- ebs_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua))) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
          haul_dur, wgt_cpua, accepted_name, order, class)
+
+# **CHECK** Not losing any hauls
+n_distinct(ebs_full$haul_id)   # before
+n_distinct(ebs$haul_id)        # after
 
 # Firstly, find species that have ever been recorded in each grid square
 ebs_species <- ebs %>%
@@ -318,8 +349,18 @@ evhoe <- evhoe_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua))) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, num_cpue, accepted_name, order, class)
+
+# **CHECK** Not losing any hauls
+n_distinct(evhoe_full$haul_id)   # before
+n_distinct(evhoe$haul_id)        # after
 
 evhoe_species <- evhoe %>%
   filter(num_cpue > 0) %>%
@@ -405,8 +446,18 @@ fr <- fr_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua))) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, num_cpue, accepted_name, order, class)
+
+# **CHECK** Not losing any hauls
+n_distinct(fr_full$haul_id)   # before
+n_distinct(fr$haul_id)        # after
 
 fr_species <- fr %>%
   filter(num_cpue > 0) %>%
@@ -492,8 +543,18 @@ gmex <- gmex_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua))) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, num_cpue, accepted_name, order, class)
+
+# **CHECK** Not losing any hauls
+n_distinct(gmex_full$haul_id)   # before
+n_distinct(gmex$haul_id)        # after
 
 gmex_species <- gmex %>%
   filter(num_cpue > 0) %>%
@@ -573,15 +634,24 @@ load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 
      envir = goa_env)
 goa_full <- goa_env$data
 
-# Modify dataset to get 1x1 grid square for each observation and select necessary variables
 goa <- goa_full %>%
   ungroup() %>%
   mutate(
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua))) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
          haul_dur, wgt_cpua, accepted_name, order, class)
+
+# **CHECK** Not losing any hauls
+n_distinct(goa_full$haul_id)   # before
+n_distinct(goa$haul_id)        # after
 
 # Firstly, find species that have ever been recorded in each grid square
 goa_species <- goa %>%
@@ -678,8 +748,18 @@ gsln <- gsln_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua))) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, num_cpue, accepted_name, order, class)
+
+# **CHECK** Not losing any hauls
+n_distinct(gsln_full$haul_id)   # before
+n_distinct(gsln$haul_id)        # after
 
 gsln_species <- gsln %>%
   filter(num_cpue > 0) %>%
@@ -765,8 +845,96 @@ gsls <- gsls_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
+
+# **CHECK** Not losing any hauls
+n_distinct(gsls_full$haul_id)   # before
+n_distinct(gsls$haul_id)        # after
+
+# Some NAs in num_cpue when wgt_cpue has values, so estimate the values using least squares regression
+
+# Settings (See below dataset (HS) for more explanation)
+min_n_species <- 3    # min paired rows to trust a species-specific slope
+min_n_order   <- 10   # min paired rows to trust an order-level slope
+min_n_class   <- 10   # min paired rows to trust a class-level slope
+
+# Training data: rows with BOTH number and weight
+train_gsls <- gsls %>%
+  filter(!is.na(num_cpue), !is.na(wgt_cpue), wgt_cpue > 0)
+
+# Tier 2: species-specific slopes
+sp_slopes_gsls <- train_gsls %>%
+  group_by(accepted_name) %>%
+  summarise(
+    n_train  = n(),
+    sp_slope = sum(num_cpue * wgt_cpue) / sum(wgt_cpue^2),
+    .groups  = "drop"
+  ) %>%
+  filter(n_train >= min_n_species) %>%
+  select(accepted_name, sp_slope)
+
+# Tier 3: order-level slopes
+order_slopes_gsls <- train_gsls %>%
+  group_by(order) %>%
+  summarise(
+    n_train     = n(),
+    order_slope = sum(num_cpue * wgt_cpue) / sum(wgt_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_order) %>%
+  select(order, order_slope)
+
+# Tier 4: class-level slopes
+class_slopes_gsls <- train_gsls %>%
+  group_by(class) %>%
+  summarise(
+    n_train     = n(),
+    class_slope = sum(num_cpue * wgt_cpue) / sum(wgt_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_class) %>%
+  select(class, class_slope)
+
+# Tier 5: global slope
+global_slope_gsls <- with(train_gsls, sum(num_cpue * wgt_cpue) / sum(wgt_cpue^2))
+
+# Apply the hierarchy
+gsls <- gsls %>%
+  left_join(sp_slopes_gsls,    by = "accepted_name") %>%
+  left_join(order_slopes_gsls, by = "order") %>%
+  left_join(class_slopes_gsls, by = "class") %>%
+  mutate(
+    num_source = case_when(
+      !is.na(num_cpue)                        ~ "observed",
+      !is.na(wgt_cpue) & !is.na(sp_slope)     ~ "species_model",
+      !is.na(wgt_cpue) & !is.na(order_slope)  ~ "order_model",
+      !is.na(wgt_cpue) & !is.na(class_slope)  ~ "class_model",
+      !is.na(wgt_cpue)                        ~ "global_model",
+      TRUE                                    ~ NA_character_
+    ),
+    num_cpue = case_when(
+      num_source == "observed"      ~ num_cpue,
+      num_source == "species_model" ~ sp_slope * wgt_cpue,
+      num_source == "order_model"   ~ order_slope * wgt_cpue,
+      num_source == "class_model"   ~ class_slope * wgt_cpue,
+      num_source == "global_model"  ~ global_slope_gsls * wgt_cpue
+    )
+  ) %>%
+  select(-sp_slope, -order_slope, -class_slope)
+
+# ** CHECK **
+count(gsls, num_source)
+sum(is.na(gsls$num_cpue))   # should be 0 if all-NA rows were already removed
+gsls %>%                    # Checking how the chondrichthyes have been calculated
+  filter(class %in% c("Elasmobranchii", "Holocephali")) %>%
+  count(class, num_source)
 
 gsls_species <- gsls %>%
   filter(num_cpue > 0) %>%
@@ -836,6 +1004,11 @@ rm(gsls_full)
 rm(gsls_species)
 rm(gsls_hauls)
 rm(gsls_complete)
+rm(sp_slopes_gsls)
+rm(order_slopes_gsls)
+rm(class_slopes_gsls)
+rm(train_gsls)
+rm(global_slope_gsls)
 
 
 #===========================
@@ -855,55 +1028,135 @@ hs <- hs_full %>%
   ) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
          wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
   filter( # Removing any rows which are all NA
     !(is.na(num_cpue) &
         is.na(num_cpua) &
         is.na(wgt_cpue) &
         is.na(wgt_cpua)))
 
+# **CHECK** That not losing any hauls
+n_distinct(hs_full$haul_id)   # before
+n_distinct(hs$haul_id)        # after
+
 # Build model to predict missing wgt_cpue based on num_cpue
-hs_model <- lm(wgt_cpue ~ accepted_name * num_cpue, data = hs)
-summary(hs_model)
-anova(hs_model)
+# hs_model <- lm(wgt_cpue ~ accepted_name * num_cpue, data = hs)
+# summary(hs_model)
+# anova(hs_model)
 
 # Extract rows where wgt_cpue in NA
-missing_rows_hs <- hs %>%
-  filter(is.na(wgt_cpue)) %>%
-  mutate(.row_id = which(is.na(hs$wgt_cpue))) # Create a temporary row identifier so know where to put predictions back
-
-# !! Cannot just fill the values using predict()
-# predicted_wgt_cpue_hs <- predict(hs_model, newdata = missing_rows_hs)
-# This is because some species never have a wgt_cpue vlaue so the model cannot be trained on this data
-# Returns an error
-# Therefore set up code where rows that can be filled are filled, and others are left as NA
+# missing_rows_hs <- hs %>%
+#  filter(is.na(wgt_cpue)) %>%
+#  mutate(.row_id = which(is.na(hs$wgt_cpue))) # Create a temporary row identifier so know where to put predictions back
 
 # Identify species levels known to the model
-known_species_hs <- hs_model$xlevels$accepted_name
+# known_species_hs <- hs_model$xlevels$accepted_name
 
 # Keep rows with known species levels
-predictable_rows_hs <- missing_rows_hs %>%
-  filter(accepted_name %in% known_species_hs)
+# predictable_rows_hs <- missing_rows_hs %>%
+#  filter(accepted_name %in% known_species_hs)
 
 # Predict one row at a time, leaving NA if the prediction fails
-predictions_hs <- lapply(seq_len(nrow(predictable_rows_hs)), function(i) {
-  row <- predictable_rows_hs[i,]
-  tryCatch(
-    as.numeric(predict(hs_model, newdata = row)),
-    error = function(e) NA_real_
-  )
-})
+# predictions_hs <- lapply(seq_len(nrow(predictable_rows_hs)), function(i) {
+#  row <- predictable_rows_hs[i,]
+#  tryCatch(
+#    as.numeric(predict(hs_model, newdata = row)),
+#    error = function(e) NA_real_
+#  )
+# })
 
 # Combine predictions
-predicted_values_hs <- unlist(predictions_hs)
+# predicted_values_hs <- unlist(predictions_hs)
 
 # Fill successful predictions into the original dataset
-valid_predictions_hs <- !is.na(predicted_values_hs)
+# valid_predictions_hs <- !is.na(predicted_values_hs)
 
-hs$wgt_cpue[predictable_rows_hs$.row_id[valid_predictions_hs]] <- predicted_values_hs[valid_predictions_hs]
+# hs$wgt_cpue[predictable_rows_hs$.row_id[valid_predictions_hs]] <- predicted_values_hs[valid_predictions_hs]
 
-# Complete the analysis the same as other datasets PLUS remove any negative values which have been filled with the predict function
+# Settings
+# Setting thresholds, a slope estimated from 1 or 2 points is unreliable, so a group needs at least this many paired rows before its slope is used
+min_n_species <- 3    # min paired rows to trust a species-specific slope
+min_n_order   <- 10   # min paired rows to trust an order-level slope
+min_n_class   <- 10   # min paired rows to trust a class-level slope
+
+# Training data: rows with BOTH weight and number
+# Also removing rows with zeros as they carry no information
+train_hs <- hs %>%
+  filter(!is.na(wgt_cpue), !is.na(num_cpue), num_cpue > 0)
+
+# Tier 2: species-specific slopes
+# Take the training data, group by species, summarise the number of rows per species and calculate the 
+# slope from the available data. Filter where there aren't enough rows for a reliable estimate 
+sp_slopes_hs <- train_hs %>%
+  group_by(accepted_name) %>%
+  summarise(
+    n_train  = n(),
+    sp_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups  = "drop"
+  ) %>%
+  filter(n_train >= min_n_species) %>%
+  select(accepted_name, sp_slope)
+
+# Tier 3: order-level slopes
+order_slopes_hs <- train_hs %>%
+  group_by(order) %>%
+  summarise(
+    n_train     = n(),
+    order_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_order) %>%
+  select(order, order_slope)
+
+# Tier 4: class-level slopes
+class_slopes_hs <- train_hs %>%
+  group_by(class) %>%
+  summarise(
+    n_train     = n(),
+    class_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_class) %>%
+  select(class, class_slope)
+
+# Tier 5: global slope
+# Calculating a single slope using every paired row in the dataset
+global_slope_hs <- with(train_hs, sum(wgt_cpue * num_cpue) / sum(num_cpue^2))
+
+# Apply the hierarchy
 hs <- hs %>%
-  filter(wgt_cpue >= 0) %>%
+  left_join(sp_slopes_hs,    by = "accepted_name") %>%
+  left_join(order_slopes_hs, by = "order") %>%
+  left_join(class_slopes_hs, by = "class") %>%
+  mutate(
+    wgt_source = case_when(
+      !is.na(wgt_cpue)                        ~ "observed",
+      !is.na(num_cpue) & !is.na(sp_slope)     ~ "species_model",
+      !is.na(num_cpue) & !is.na(order_slope)  ~ "order_model",
+      !is.na(num_cpue) & !is.na(class_slope)  ~ "class_model",
+      !is.na(num_cpue)                        ~ "global_model",
+      TRUE                                    ~ NA_character_
+    ),
+    wgt_cpue = case_when(
+      wgt_source == "observed"      ~ wgt_cpue,
+      wgt_source == "species_model" ~ sp_slope * num_cpue,
+      wgt_source == "order_model"   ~ order_slope * num_cpue,
+      wgt_source == "class_model"   ~ class_slope * num_cpue,
+      wgt_source == "global_model"  ~ global_slope_hs * num_cpue
+    )
+  ) %>%
+  select(-sp_slope, -order_slope, -class_slope)
+
+# ** CHECKS **
+count(hs, wgt_source)     # How many rows come from each tier
+sum(is.na(hs$wgt_cpue))   # Should be 0
+hs %>%                    # Checking how the chondrichthyes have been calculated
+  filter(class %in% c("Elasmobranchii", "Holocephali")) %>%
+  count(class, wgt_source)
+
+
+# Complete the analysis the same as other datasets
+hs <- hs %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
          haul_dur, wgt_cpue, accepted_name, order, class)
 
@@ -975,16 +1228,12 @@ rm(hs_env)
 rm(hs_full)
 rm(hs_hauls)
 rm(hs_complete)
-rm(hs_model)
 rm(hs_species)
-rm(missing_rows_hs)
-rm(predictable_rows_hs)
-rm(predictions_hs)
-rm(known_species_hs)
-rm(predicted_values_hs)
-rm(predicted_wgt_cpue_hs)
-rm(valid_predictions_hs)
-
+rm(sp_slopes_hs)
+rm(order_slopes_hs)
+rm(class_slopes_hs)
+rm(train_hs)
+rm(global_slope_hs)
 
 
 #====================
@@ -1001,8 +1250,18 @@ ie <- ie_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua))) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, num_cpue, accepted_name, order, class)
+
+# **CHECK** Not losing any hauls
+n_distinct(ie_full$haul_id)   # before
+n_distinct(ie$haul_id)        # after
 
 ie_species <- ie %>%
   filter(num_cpue > 0) %>%
@@ -1088,8 +1347,91 @@ neus <- neus_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
+
+# **CHECK** Not losing any hauls
+n_distinct(neus_full$haul_id)   # before
+n_distinct(neus$haul_id)        # after
+
+# Some NAs in num_cpue when wgt_cpue has values, so estimate the values using least squares regression
+
+# Training data: rows with BOTH number and weight
+train_neus <- neus %>%
+  filter(!is.na(num_cpue), !is.na(wgt_cpue), wgt_cpue > 0)
+
+# Tier 2: species-specific slopes
+sp_slopes_neus <- train_neus %>%
+  group_by(accepted_name) %>%
+  summarise(
+    n_train  = n(),
+    sp_slope = sum(num_cpue * wgt_cpue) / sum(wgt_cpue^2),
+    .groups  = "drop"
+  ) %>%
+  filter(n_train >= min_n_species) %>%
+  select(accepted_name, sp_slope)
+
+# Tier 3: order-level slopes
+order_slopes_neus <- train_neus %>%
+  group_by(order) %>%
+  summarise(
+    n_train     = n(),
+    order_slope = sum(num_cpue * wgt_cpue) / sum(wgt_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_order) %>%
+  select(order, order_slope)
+
+# Tier 4: class-level slopes
+class_slopes_neus <- train_neus %>%
+  group_by(class) %>%
+  summarise(
+    n_train     = n(),
+    class_slope = sum(num_cpue * wgt_cpue) / sum(wgt_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_class) %>%
+  select(class, class_slope)
+
+# Tier 5: global slope
+global_slope_neus <- with(train_neus, sum(num_cpue * wgt_cpue) / sum(wgt_cpue^2))
+
+# Apply the hierarchy
+neus <- neus %>%
+  left_join(sp_slopes_neus,    by = "accepted_name") %>%
+  left_join(order_slopes_neus, by = "order") %>%
+  left_join(class_slopes_neus, by = "class") %>%
+  mutate(
+    num_source = case_when(
+      !is.na(num_cpue)                        ~ "observed",
+      !is.na(wgt_cpue) & !is.na(sp_slope)     ~ "species_model",
+      !is.na(wgt_cpue) & !is.na(order_slope)  ~ "order_model",
+      !is.na(wgt_cpue) & !is.na(class_slope)  ~ "class_model",
+      !is.na(wgt_cpue)                        ~ "global_model",
+      TRUE                                    ~ NA_character_
+    ),
+    num_cpue = case_when(
+      num_source == "observed"      ~ num_cpue,
+      num_source == "species_model" ~ sp_slope * wgt_cpue,
+      num_source == "order_model"   ~ order_slope * wgt_cpue,
+      num_source == "class_model"   ~ class_slope * wgt_cpue,
+      num_source == "global_model"  ~ global_slope_neus * wgt_cpue
+    )
+  ) %>%
+  select(-sp_slope, -order_slope, -class_slope)
+
+# ** CHECK **
+count(neus, num_source)
+sum(is.na(neus$num_cpue))   # should be 0 if all-NA rows were already removed
+neus %>%                    # Checking how the chondrichthyes have been calculated
+  filter(class %in% c("Elasmobranchii", "Holocephali")) %>%
+  count(class, num_source)
 
 neus_species <- neus %>%
   filter(num_cpue > 0) %>%
@@ -1159,6 +1501,11 @@ rm(neus_full)
 rm(neus_species)
 rm(neus_hauls)
 rm(neus_complete)
+rm(sp_slopes_neus)
+rm(order_slopes_neus)
+rm(class_slopes_neus)
+rm(train_neus)
+rm(global_slope_neus)
 
 
 #=========================
@@ -1175,8 +1522,18 @@ nigfs <- nigfs_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua))) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, num_cpue, accepted_name, order, class)
+
+# **CHECK** Not losing any hauls
+n_distinct(nigfs_full$haul_id)   # before
+n_distinct(nigfs$haul_id)        # after
 
 nigfs_species <- nigfs %>%
   filter(num_cpue > 0) %>%
@@ -1262,8 +1619,18 @@ nor <- nor_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua))) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, num_cpue, accepted_name, order, class)
+
+# **CHECK** Not losing any hauls
+n_distinct(nor_full$haul_id)   # before
+n_distinct(nor$haul_id)        # after
 
 nor_species <- nor %>%
   filter(num_cpue > 0) %>%
@@ -1349,8 +1716,18 @@ ns <- ns_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua))) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, num_cpue, accepted_name, order, class)
+
+# **CHECK** Not losing any hauls
+n_distinct(ns_full$haul_id)   # before
+n_distinct(ns$haul_id)        # after
 
 ns_species <- ns %>%
   filter(num_cpue > 0) %>%
@@ -1367,7 +1744,10 @@ ns_species %>%
   count(lat_cell, lon_cell, accepted_name, order, class) %>%
   filter(n > 1)
 
-ns_hauls <- ns %>%
+# Using original full dataset as some hauls were lost in the filtering 
+ns_hauls <- ns_full %>%
+  ungroup() %>%
+  mutate(lat_cell = floor(latitude), lon_cell = floor(longitude)) %>%
   distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
 
 # **CHECK**
@@ -1436,8 +1816,18 @@ pt <- pt_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua))) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+         haul_dur, num_cpue, accepted_name, order, class)
+
+# **CHECK** Not losing any hauls
+n_distinct(pt_full$haul_id)   # before
+n_distinct(pt$haul_id)        # after
 
 pt_species <- pt %>%
   filter(num_cpue > 0) %>%
@@ -1454,7 +1844,10 @@ pt_species %>%
   count(lat_cell, lon_cell, accepted_name, order, class) %>%
   filter(n > 1)
 
-pt_hauls <- pt %>%
+# Using original full dataset as some hauls were lost in the filtering 
+pt_hauls <- pt_full %>%
+  ungroup() %>%
+  mutate(lat_cell = floor(latitude), lon_cell = floor(longitude)) %>%
   distinct(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur)
 
 # **CHECK**
@@ -1526,49 +1919,95 @@ qcs <- qcs_full %>%
   ) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
          wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
   filter( # Removing any rows which are all NA
     !(is.na(num_cpue) &
         is.na(num_cpua) &
         is.na(wgt_cpue) &
         is.na(wgt_cpua)))
 
-# Build model to predict missing wgt_cpue based on num_cpue
-qcs_model <- lm(wgt_cpue ~ accepted_name * num_cpue, data = qcs)
-summary(qcs_model)
-anova(qcs_model)
+# **CHECK** That not losing any hauls
+n_distinct(qcs_full$haul_id)   # before
+n_distinct(qcs$haul_id)        # after
 
-# Extract rows where wgt_cpue in NA
-missing_rows_qcs <- qcs %>%
-  filter(is.na(wgt_cpue)) %>%
-  mutate(.row_id = which(is.na(qcs$wgt_cpue))) # Create a temporary row identifier so know where to put predictions back
+# Training data: rows with BOTH weight and number
+# Also removing rows with zeros as they carry no information
+train_qcs <- qcs %>%
+  filter(!is.na(wgt_cpue), !is.na(num_cpue), num_cpue > 0)
 
-# Identify species levels known to the model
-known_species_qcs <- qcs_model$xlevels$accepted_name
+# Tier 2: species-specific slopes
+# Take the training data, group by species, summarise the number of rows per species and calculate the 
+# slope from the available data. Filter where there aren't enough rows for a reliable estimate 
+sp_slopes_qcs <- train_qcs %>%
+  group_by(accepted_name) %>%
+  summarise(
+    n_train  = n(),
+    sp_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups  = "drop"
+  ) %>%
+  filter(n_train >= min_n_species) %>%
+  select(accepted_name, sp_slope)
 
-# Keep rows with known species levels
-predictable_rows_qcs <- missing_rows_qcs %>%
-  filter(accepted_name %in% known_species_qcs)
+# Tier 3: order-level slopes
+order_slopes_qcs <- train_qcs %>%
+  group_by(order) %>%
+  summarise(
+    n_train     = n(),
+    order_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_order) %>%
+  select(order, order_slope)
 
-# Predict one row at a time, leaving NA if the prediction fails
-predictions_qcs <- lapply(seq_len(nrow(predictable_rows_qcs)), function(i) {
-  row <- predictable_rows_qcs[i,]
-  tryCatch(
-    as.numeric(predict(qcs_model, newdata = row)),
-    error = function(e) NA_real_
-  )
-})
+# Tier 4: class-level slopes
+class_slopes_qcs <- train_qcs %>%
+  group_by(class) %>%
+  summarise(
+    n_train     = n(),
+    class_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_class) %>%
+  select(class, class_slope)
 
-# Combine predictions
-predicted_values_qcs <- unlist(predictions_qcs)
+# Tier 5: global slope
+# Calculating a single slope using every paired row in the dataset
+global_slope_qcs <- with(train_qcs, sum(wgt_cpue * num_cpue) / sum(num_cpue^2))
 
-# Fill successful predictions into the original dataset
-valid_predictions_qcs <- !is.na(predicted_values_qcs)
-
-qcs$wgt_cpue[predictable_rows_qcs$.row_id[valid_predictions_qcs]] <- predicted_values_qcs[valid_predictions_qcs]
-
-# Complete the analysis the same as other datasets PLUS remove any negative values which have been filled with the predict function
+# Apply the hierarchy
 qcs <- qcs %>%
-  filter(wgt_cpue >= 0) %>%
+  left_join(sp_slopes_qcs,    by = "accepted_name") %>%
+  left_join(order_slopes_qcs, by = "order") %>%
+  left_join(class_slopes_qcs, by = "class") %>%
+  mutate(
+    wgt_source = case_when(
+      !is.na(wgt_cpue)                        ~ "observed",
+      !is.na(num_cpue) & !is.na(sp_slope)     ~ "species_model",
+      !is.na(num_cpue) & !is.na(order_slope)  ~ "order_model",
+      !is.na(num_cpue) & !is.na(class_slope)  ~ "class_model",
+      !is.na(num_cpue)                        ~ "global_model",
+      TRUE                                    ~ NA_character_
+    ),
+    wgt_cpue = case_when(
+      wgt_source == "observed"      ~ wgt_cpue,
+      wgt_source == "species_model" ~ sp_slope * num_cpue,
+      wgt_source == "order_model"   ~ order_slope * num_cpue,
+      wgt_source == "class_model"   ~ class_slope * num_cpue,
+      wgt_source == "global_model"  ~ global_slope_qcs * num_cpue
+    )
+  ) %>%
+  select(-sp_slope, -order_slope, -class_slope)
+
+# Checks
+count(qcs, wgt_source)     # How many rows come from each tier
+sum(is.na(qcs$wgt_cpue))   # Should be 0
+qcs %>%                    # Checking how the chondrichthyes have been calculated
+  filter(class %in% c("Elasmobranchii", "Holocephali")) %>%
+  count(class, wgt_source)
+
+
+# Complete the analysis the same as other datasets
+qcs <- qcs %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
          haul_dur, wgt_cpue, accepted_name, order, class)
 
@@ -1640,15 +2079,12 @@ rm(qcs_env)
 rm(qcs_full)
 rm(qcs_hauls)
 rm(qcs_complete)
-rm(qcs_model)
 rm(qcs_species)
-rm(missing_rows_qcs)
-rm(predictable_rows_qcs)
-rm(predictions_qcs)
-rm(known_species_qcs)
-rm(predicted_values_qcs)
-rm(predicted_wgt_cpue_qcs)
-rm(valid_predictions_qcs)
+rm(sp_slopes_qcs)
+rm(order_slopes_qcs)
+rm(class_slopes_qcs)
+rm(train_qcs)
+rm(global_slope_qcs)
 
 
 #==========================
@@ -1659,14 +2095,25 @@ load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 
      envir = rock_env)
 rock_full <- rock_env$data
 
+# Prepare the dataset
 rock <- rock_full %>%
   ungroup() %>%
   mutate(
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
+
+# **CHECK** That not losing any hauls
+n_distinct(rock_full$haul_id)   # before
+n_distinct(rock$haul_id)        # after
 
 rock_species <- rock %>%
   filter(num_cpue > 0) %>%
@@ -1746,7 +2193,6 @@ load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 
      envir = scs_env)
 scs_full <- scs_env$data
 
-# Prepare the dataset
 scs <- scs_full %>%
   ungroup() %>%
   mutate(
@@ -1755,32 +2201,89 @@ scs <- scs_full %>%
   ) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
          wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
   filter( # Removing any rows which are all NA
     !(is.na(num_cpue) &
         is.na(num_cpua) &
         is.na(wgt_cpue) &
         is.na(wgt_cpua)))
 
-# Build model to predict missing wgt_cpue based on num_cpue
-scs_model <- lm(num_cpue ~ accepted_name * wgt_cpue, data = scs)
-summary(scs_model)
-anova(scs_model)
+# **CHECK** Not losing any hauls
+n_distinct(scs_full$haul_id)   # before
+n_distinct(scs$haul_id)        # after
 
-# Extract rows where wgt_cpue in NA
-missing_rows_scs <- scs %>%
-  filter(is.na(num_cpue))
+# Some NAs in num_cpue when wgt_cpue has values, so estimate the values using least squares regression
 
-# Predict the missing wgt_cpue values
-predicted_num_cpue_scs <- predict(scs_model, newdata = missing_rows_scs)
+# Training data: rows with BOTH number and weight
+train_scs <- scs %>%
+  filter(!is.na(num_cpue), !is.na(wgt_cpue), wgt_cpue > 0)
 
-# Populate the NA values
-scs[is.na(scs$num_cpue), "num_cpue"] <- predicted_num_cpue_scs
+# Tier 2: species-specific slopes
+sp_slopes_scs <- train_scs %>%
+  group_by(accepted_name) %>%
+  summarise(
+    n_train  = n(),
+    sp_slope = sum(num_cpue * wgt_cpue) / sum(wgt_cpue^2),
+    .groups  = "drop"
+  ) %>%
+  filter(n_train >= min_n_species) %>%
+  select(accepted_name, sp_slope)
 
-# Analysis as normal
+# Tier 3: order-level slopes
+order_slopes_scs <- train_scs %>%
+  group_by(order) %>%
+  summarise(
+    n_train     = n(),
+    order_slope = sum(num_cpue * wgt_cpue) / sum(wgt_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_order) %>%
+  select(order, order_slope)
+
+# Tier 4: class-level slopes
+class_slopes_scs <- train_scs %>%
+  group_by(class) %>%
+  summarise(
+    n_train     = n(),
+    class_slope = sum(num_cpue * wgt_cpue) / sum(wgt_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_class) %>%
+  select(class, class_slope)
+
+# Tier 5: global slope
+global_slope_scs <- with(train_scs, sum(num_cpue * wgt_cpue) / sum(wgt_cpue^2))
+
+# Apply the hierarchy
 scs <- scs %>%
-  filter(num_cpue >= 0) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num_cpue, accepted_name, order, class)
+  left_join(sp_slopes_scs,    by = "accepted_name") %>%
+  left_join(order_slopes_scs, by = "order") %>%
+  left_join(class_slopes_scs, by = "class") %>%
+  mutate(
+    num_source = case_when(
+      !is.na(num_cpue)                        ~ "observed",
+      !is.na(wgt_cpue) & !is.na(sp_slope)     ~ "species_model",
+      !is.na(wgt_cpue) & !is.na(order_slope)  ~ "order_model",
+      !is.na(wgt_cpue) & !is.na(class_slope)  ~ "class_model",
+      !is.na(wgt_cpue)                        ~ "global_model",
+      TRUE                                    ~ NA_character_
+    ),
+    num_cpue = case_when(
+      num_source == "observed"      ~ num_cpue,
+      num_source == "species_model" ~ sp_slope * wgt_cpue,
+      num_source == "order_model"   ~ order_slope * wgt_cpue,
+      num_source == "class_model"   ~ class_slope * wgt_cpue,
+      num_source == "global_model"  ~ global_slope_scs * wgt_cpue
+    )
+  ) %>%
+  select(-sp_slope, -order_slope, -class_slope)
+
+# ** CHECK **
+count(scs, num_source)
+sum(is.na(scs$num_cpue))   # should be 0 if all-NA rows were already removed
+scs %>%                    # Checking how the chondrichthyes have been calculated
+  filter(class %in% c("Elasmobranchii", "Holocephali")) %>%
+  count(class, num_source)
 
 scs_species <- scs %>%
   filter(num_cpue > 0) %>%
@@ -1850,8 +2353,11 @@ rm(scs_full)
 rm(scs_species)
 rm(scs_hauls)
 rm(scs_complete)
-rm(scs_model)
-rm(predicted_num_cpue_scs)
+rm(sp_slopes_scs)
+rm(order_slopes_scs)
+rm(class_slopes_scs)
+rm(train_scs)
+rm(global_slope_scs)
 
 
 #=====================
@@ -1868,8 +2374,18 @@ seus <- seus_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
+
+# **CHECK** Not losing any hauls
+n_distinct(seus_full$haul_id)   # before
+n_distinct(seus$haul_id)        # after
 
 seus_species <- seus %>%
   filter(num_cpue > 0) %>%
@@ -1949,7 +2465,6 @@ load("/Users/mh26992/Library/CloudStorage/OneDrive-UniversityofBristol/PhD year 
      envir = sog_env)
 sog_full <- sog_env$data
 
-# Prepare the dataset
 sog <- sog_full %>%
   ungroup() %>%
   mutate(
@@ -1958,49 +2473,95 @@ sog <- sog_full %>%
   ) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
          wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
   filter( # Removing any rows which are all NA
     !(is.na(num_cpue) &
         is.na(num_cpua) &
         is.na(wgt_cpue) &
         is.na(wgt_cpua)))
 
-# Build model to predict missing wgt_cpue based on num_cpue
-sog_model <- lm(wgt_cpue ~ accepted_name * num_cpue, data = sog)
-summary(sog_model)
-anova(sog_model)
+# **CHECK** Not losing any hauls
+n_distinct(sog_full$haul_id)   # before
+n_distinct(sog$haul_id)        # after
 
-# Extract rows where wgt_cpue in NA
-missing_rows_sog <- sog %>%
-  filter(is.na(wgt_cpue)) %>%
-  mutate(.row_id = which(is.na(sog$wgt_cpue))) # Create a temporary row identifier so know where to put predictions back
+# Training data: rows with BOTH weight and number
+# Also removing rows with zeros as they carry no information
+train_sog <- sog %>%
+  filter(!is.na(wgt_cpue), !is.na(num_cpue), num_cpue > 0)
 
-# Identify species levels known to the model
-known_species_sog <- sog_model$xlevels$accepted_name
+# Tier 2: species-specific slopes
+# Take the training data, group by species, summarise the number of rows per species and calculate the 
+# slope from the available data. Filter where there aren't enough rows for a reliable estimate 
+sp_slopes_sog <- train_sog %>%
+  group_by(accepted_name) %>%
+  summarise(
+    n_train  = n(),
+    sp_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups  = "drop"
+  ) %>%
+  filter(n_train >= min_n_species) %>%
+  select(accepted_name, sp_slope)
 
-# Keep rows with known species levels
-predictable_rows_sog <- missing_rows_sog %>%
-  filter(accepted_name %in% known_species_sog)
+# Tier 3: order-level slopes
+order_slopes_sog <- train_sog %>%
+  group_by(order) %>%
+  summarise(
+    n_train     = n(),
+    order_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_order) %>%
+  select(order, order_slope)
 
-# Predict one row at a time, leaving NA if the prediction fails
-predictions_sog <- lapply(seq_len(nrow(predictable_rows_sog)), function(i) {
-  row <- predictable_rows_sog[i,]
-  tryCatch(
-    as.numeric(predict(sog_model, newdata = row)),
-    error = function(e) NA_real_
-  )
-})
+# Tier 4: class-level slopes
+class_slopes_sog <- train_sog %>%
+  group_by(class) %>%
+  summarise(
+    n_train     = n(),
+    class_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_class) %>%
+  select(class, class_slope)
 
-# Combine predictions
-predicted_values_sog <- unlist(predictions_sog)
+# Tier 5: global slope
+# Calculating a single slope using every paired row in the dataset
+global_slope_sog <- with(train_sog, sum(wgt_cpue * num_cpue) / sum(num_cpue^2))
 
-# Fill successful predictions into the original dataset
-valid_predictions_sog <- !is.na(predicted_values_sog)
-
-sog$wgt_cpue[predictable_rows_sog$.row_id[valid_predictions_sog]] <- predicted_values_sog[valid_predictions_sog]
-
-# Complete the analysis the same as other datasets PLUS remove any negative values which have been filled with the predict function
+# Apply the hierarchy
 sog <- sog %>%
-  filter(wgt_cpue >= 0) %>%
+  left_join(sp_slopes_sog,    by = "accepted_name") %>%
+  left_join(order_slopes_sog, by = "order") %>%
+  left_join(class_slopes_sog, by = "class") %>%
+  mutate(
+    wgt_source = case_when(
+      !is.na(wgt_cpue)                        ~ "observed",
+      !is.na(num_cpue) & !is.na(sp_slope)     ~ "species_model",
+      !is.na(num_cpue) & !is.na(order_slope)  ~ "order_model",
+      !is.na(num_cpue) & !is.na(class_slope)  ~ "class_model",
+      !is.na(num_cpue)                        ~ "global_model",
+      TRUE                                    ~ NA_character_
+    ),
+    wgt_cpue = case_when(
+      wgt_source == "observed"      ~ wgt_cpue,
+      wgt_source == "species_model" ~ sp_slope * num_cpue,
+      wgt_source == "order_model"   ~ order_slope * num_cpue,
+      wgt_source == "class_model"   ~ class_slope * num_cpue,
+      wgt_source == "global_model"  ~ global_slope_sog * num_cpue
+    )
+  ) %>%
+  select(-sp_slope, -order_slope, -class_slope)
+
+# Checks
+count(sog, wgt_source)     # How many rows come from each tier
+sum(is.na(sog$wgt_cpue))   # Should be 0
+sog %>%                    # Checking how the chondrichthyes have been calculated
+  filter(class %in% c("Elasmobranchii", "Holocephali")) %>%
+  count(class, wgt_source)
+
+
+# Complete the analysis the same as other datasets
+sog <- sog %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
          haul_dur, wgt_cpue, accepted_name, order, class)
 
@@ -2072,17 +2633,12 @@ rm(sog_env)
 rm(sog_full)
 rm(sog_hauls)
 rm(sog_complete)
-rm(sog_model)
 rm(sog_species)
-rm(missing_rows_sog)
-rm(predictable_rows_sog)
-rm(predictions_sog)
-rm(known_species_sog)
-rm(predicted_values_sog)
-rm(predicted_wgt_cpue_sog)
-rm(valid_predictions_sog)
-
-
+rm(sp_slopes_sog)
+rm(order_slopes_sog)
+rm(class_slopes_sog)
+rm(train_sog)
+rm(global_slope_sog)
 
 
 #========================
@@ -2099,8 +2655,18 @@ sparsa <- sparsa_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
+
+# **CHECK** Not losing any hauls
+n_distinct(sparsa_full$haul_id)   # before
+n_distinct(sparsa$haul_id)        # after
 
 sparsa_species <- sparsa %>%
   filter(num_cpue > 0) %>%
@@ -2186,8 +2752,18 @@ spnorth <- spnorth_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
+
+# **CHECK** Not losing any hauls
+n_distinct(spnorth_full$haul_id)   # before
+n_distinct(spnorth$haul_id)        # after
 
 spnorth_species <- spnorth %>%
   filter(num_cpue > 0) %>%
@@ -2273,8 +2849,18 @@ spporc <- spporc_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
+
+# **CHECK** Not losing any hauls
+n_distinct(spporc_full$haul_id)   # before
+n_distinct(spporc$haul_id)        # after
 
 spporc_species <- spporc %>%
   filter(num_cpue > 0) %>%
@@ -2360,8 +2946,18 @@ swc <- swc_full %>%
     lat_cell = floor(latitude),
     lon_cell = floor(longitude)
   ) %>%
-  select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num, num_cpue, accepted_name, order, class)
+  select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
+         wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
+  filter( # Removing any rows which are all NA
+    !(is.na(num_cpue) &
+        is.na(num_cpua) &
+        is.na(wgt_cpue) &
+        is.na(wgt_cpua)))
+
+# **CHECK** Not losing any hauls
+n_distinct(swc_full$haul_id)   # before
+n_distinct(swc$haul_id)        # after
 
 swc_species <- swc %>%
   filter(num_cpue > 0) %>%
@@ -2450,26 +3046,91 @@ wcann <- wcann_full %>%
   ) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
          wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
   filter( # Removing any rows which are all NA
     !(is.na(num_cpue) &
         is.na(num_cpua) &
         is.na(wgt_cpue) &
         is.na(wgt_cpua)))
 
-# Build model to predict missing wgt_cpue based on num_cpue
-wcann_model <- lm(wgt_cpue ~ accepted_name * num_cpue, data = wcann)
-summary(wcann_model)
-anova(wcann_model)
+# **CHECK** That not losing any hauls
+n_distinct(wcann_full$haul_id)   # before
+n_distinct(wcann$haul_id)        # after
 
-# Extract rows where wgt_cpue in NA
-missing_rows_wcann <- wcann %>%
-  filter(is.na(wgt_cpue))
+# Training data: rows with BOTH weight and number
+# Also removing rows with zeros as they carry no information
+train_wcann <- wcann %>%
+  filter(!is.na(wgt_cpue), !is.na(num_cpue), num_cpue > 0)
 
-# Predict the missing wgt_cpue values
-predicted_wgt_cpue_wcann <- predict(wcann_model, newdata = missing_rows_wcann)
+# Tier 2: species-specific slopes
+# Take the training data, group by species, summarise the number of rows per species and calculate the 
+# slope from the available data. Filter where there aren't enough rows for a reliable estimate 
+sp_slopes_wcann <- train_wcann %>%
+  group_by(accepted_name) %>%
+  summarise(
+    n_train  = n(),
+    sp_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups  = "drop"
+  ) %>%
+  filter(n_train >= min_n_species) %>%
+  select(accepted_name, sp_slope)
 
-# Populate the NA values
-wcann[is.na(wcann$wgt_cpue), "wgt_cpue"] <- predicted_wgt_cpue_wcann
+# Tier 3: order-level slopes
+order_slopes_wcann <- train_wcann %>%
+  group_by(order) %>%
+  summarise(
+    n_train     = n(),
+    order_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_order) %>%
+  select(order, order_slope)
+
+# Tier 4: class-level slopes
+class_slopes_wcann <- train_wcann %>%
+  group_by(class) %>%
+  summarise(
+    n_train     = n(),
+    class_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_class) %>%
+  select(class, class_slope)
+
+# Tier 5: global slope
+# Calculating a single slope using every paired row in the dataset
+global_slope_wcann <- with(train_wcann, sum(wgt_cpue * num_cpue) / sum(num_cpue^2))
+
+# Apply the hierarchy
+wcann <- wcann %>%
+  left_join(sp_slopes_wcann,    by = "accepted_name") %>%
+  left_join(order_slopes_wcann, by = "order") %>%
+  left_join(class_slopes_wcann, by = "class") %>%
+  mutate(
+    wgt_source = case_when(
+      !is.na(wgt_cpue)                        ~ "observed",
+      !is.na(num_cpue) & !is.na(sp_slope)     ~ "species_model",
+      !is.na(num_cpue) & !is.na(order_slope)  ~ "order_model",
+      !is.na(num_cpue) & !is.na(class_slope)  ~ "class_model",
+      !is.na(num_cpue)                        ~ "global_model",
+      TRUE                                    ~ NA_character_
+    ),
+    wgt_cpue = case_when(
+      wgt_source == "observed"      ~ wgt_cpue,
+      wgt_source == "species_model" ~ sp_slope * num_cpue,
+      wgt_source == "order_model"   ~ order_slope * num_cpue,
+      wgt_source == "class_model"   ~ class_slope * num_cpue,
+      wgt_source == "global_model"  ~ global_slope_wcann * num_cpue
+    )
+  ) %>%
+  select(-sp_slope, -order_slope, -class_slope)
+
+# Checks
+count(wcann, wgt_source)     # How many rows come from each tier
+sum(is.na(wcann$wgt_cpue))   # Should be 0
+wcann %>%                    # Checking how the chondrichthyes have been calculated
+  filter(class %in% c("Elasmobranchii", "Holocephali")) %>%
+  count(class, wgt_source)
 
 # Analysis as usual
 wcann <- wcann %>%
@@ -2544,8 +3205,12 @@ rm(wcann_full)
 rm(wcann_species)
 rm(wcann_hauls)
 rm(wcann_complete)
-rm(wcann_model)
-rm(predicted_wgt_cpue_wcann)
+rm(sp_slopes_wcann)
+rm(order_slopes_wcann)
+rm(class_slopes_wcann)
+rm(train_wcann)
+rm(global_slope_wcann)
+
 
 
 #======================================
@@ -2565,49 +3230,94 @@ wchg <- wchg_full %>%
   ) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
          wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
   filter( # Removing any rows which are all NA
     !(is.na(num_cpue) &
         is.na(num_cpua) &
         is.na(wgt_cpue) &
         is.na(wgt_cpua)))
 
-# Build model to predict missing wgt_cpue based on num_cpue
-wchg_model <- lm(wgt_cpue ~ accepted_name * num_cpue, data = wchg)
-summary(wchg_model)
-anova(wchg_model)
+# **CHECK** That not losing any hauls
+n_distinct(wchg_full$haul_id)   # before
+n_distinct(wchg$haul_id)        # after
 
-# Extract rows where wgt_cpue in NA
-missing_rows_wchg <- wchg %>%
-  filter(is.na(wgt_cpue)) %>%
-  mutate(.row_id = which(is.na(wchg$wgt_cpue))) # Create a temporary row identifier so know where to put predictions back
+# Training data: rows with BOTH weight and number
+# Also removing rows with zeros as they carry no information
+train_wchg <- wchg %>%
+  filter(!is.na(wgt_cpue), !is.na(num_cpue), num_cpue > 0)
 
-# Identify species levels known to the model
-known_species_wchg <- wchg_model$xlevels$accepted_name
+# Tier 2: species-specific slopes
+# Take the training data, group by species, summarise the number of rows per species and calculate the 
+# slope from the available data. Filter where there aren't enough rows for a reliable estimate 
+sp_slopes_wchg <- train_wchg %>%
+  group_by(accepted_name) %>%
+  summarise(
+    n_train  = n(),
+    sp_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups  = "drop"
+  ) %>%
+  filter(n_train >= min_n_species) %>%
+  select(accepted_name, sp_slope)
 
-# Keep rows with known species levels
-predictable_rows_wchg <- missing_rows_wchg %>%
-  filter(accepted_name %in% known_species_wchg)
+# Tier 3: order-level slopes
+order_slopes_wchg <- train_wchg %>%
+  group_by(order) %>%
+  summarise(
+    n_train     = n(),
+    order_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_order) %>%
+  select(order, order_slope)
 
-# Predict one row at a time, leaving NA if the prediction fails
-predictions_wchg <- lapply(seq_len(nrow(predictable_rows_wchg)), function(i) {
-  row <- predictable_rows_wchg[i,]
-  tryCatch(
-    as.numeric(predict(wchg_model, newdata = row)),
-    error = function(e) NA_real_
-  )
-})
+# Tier 4: class-level slopes
+class_slopes_wchg <- train_wchg %>%
+  group_by(class) %>%
+  summarise(
+    n_train     = n(),
+    class_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_class) %>%
+  select(class, class_slope)
 
-# Combine predictions
-predicted_values_wchg <- unlist(predictions_wchg)
+# Tier 5: global slope
+# Calculating a single slope using every paired row in the dataset
+global_slope_wchg <- with(train_wchg, sum(wgt_cpue * num_cpue) / sum(num_cpue^2))
 
-# Fill successful predictions into the original dataset
-valid_predictions_wchg <- !is.na(predicted_values_wchg)
-
-wchg$wgt_cpue[predictable_rows_wchg$.row_id[valid_predictions_wchg]] <- predicted_values_wchg[valid_predictions_wchg]
-
-# Complete the analysis the same as other datasets PLUS remove any negative values which have been filled with the predict function
+# Apply the hierarchy
 wchg <- wchg %>%
-  filter(wgt_cpue >= 0) %>%
+  left_join(sp_slopes_wchg,    by = "accepted_name") %>%
+  left_join(order_slopes_wchg, by = "order") %>%
+  left_join(class_slopes_wchg, by = "class") %>%
+  mutate(
+    wgt_source = case_when(
+      !is.na(wgt_cpue)                        ~ "observed",
+      !is.na(num_cpue) & !is.na(sp_slope)     ~ "species_model",
+      !is.na(num_cpue) & !is.na(order_slope)  ~ "order_model",
+      !is.na(num_cpue) & !is.na(class_slope)  ~ "class_model",
+      !is.na(num_cpue)                        ~ "global_model",
+      TRUE                                    ~ NA_character_
+    ),
+    wgt_cpue = case_when(
+      wgt_source == "observed"      ~ wgt_cpue,
+      wgt_source == "species_model" ~ sp_slope * num_cpue,
+      wgt_source == "order_model"   ~ order_slope * num_cpue,
+      wgt_source == "class_model"   ~ class_slope * num_cpue,
+      wgt_source == "global_model"  ~ global_slope_wchg * num_cpue
+    )
+  ) %>%
+  select(-sp_slope, -order_slope, -class_slope)
+
+# Checks
+count(wchg, wgt_source)     # How many rows come from each tier
+sum(is.na(wchg$wgt_cpue))   # Should be 0
+wchg %>%                    # Checking how the chondrichthyes have been calculated
+  filter(class %in% c("Elasmobranchii", "Holocephali")) %>%
+  count(class, wgt_source)
+
+# Complete the analysis the same as other datasets
+wchg <- wchg %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
          haul_dur, wgt_cpue, accepted_name, order, class)
 
@@ -2679,15 +3389,12 @@ rm(wchg_env)
 rm(wchg_full)
 rm(wchg_hauls)
 rm(wchg_complete)
-rm(wchg_model)
 rm(wchg_species)
-rm(missing_rows_wchg)
-rm(predictable_rows_wchg)
-rm(predictions_wchg)
-rm(known_species_wchg)
-rm(predicted_values_wchg)
-rm(valid_predictions_wchg)
-
+rm(sp_slopes_wchg)
+rm(order_slopes_wchg)
+rm(class_slopes_wchg)
+rm(train_wchg)
+rm(global_slope_wchg)
 
 
 
@@ -2708,35 +3415,99 @@ wctri <- wctri_full %>%
   ) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
          wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
   filter( # Removing any rows which are all NA
     !(is.na(num_cpue) &
         is.na(num_cpua) &
         is.na(wgt_cpue) &
         is.na(wgt_cpua)))
 
-# Build model to predict missing wgt_cpue based on num_cpue
-wctri_model <- lm(num_cpue ~ accepted_name * wgt_cpue, data = wctri)
-summary(wctri_model)
-anova(wctri_model)
+# **CHECK** That not losing any hauls
+n_distinct(wctri_full$haul_id)   # before
+n_distinct(wctri$haul_id)        # after
 
-# Extract rows where wgt_cpue in NA
-missing_rows_wctri <- wctri %>%
-  filter(is.na(num_cpue))
+# Training data: rows with BOTH weight and number
+# Also removing rows with zeros as they carry no information
+train_wctri <- wctri %>%
+  filter(!is.na(wgt_cpue), !is.na(num_cpue), num_cpue > 0)
 
-# Predict the missing wgt_cpue values
-predicted_num_cpue_wctri <- predict(wctri_model, newdata = missing_rows_wctri)
+# Tier 2: species-specific slopes
+# Take the training data, group by species, summarise the number of rows per species and calculate the 
+# slope from the available data. Filter where there aren't enough rows for a reliable estimate 
+sp_slopes_wctri <- train_wctri %>%
+  group_by(accepted_name) %>%
+  summarise(
+    n_train  = n(),
+    sp_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups  = "drop"
+  ) %>%
+  filter(n_train >= min_n_species) %>%
+  select(accepted_name, sp_slope)
 
-# Populate the NA values
-wctri[is.na(wctri$num_cpue), "num_cpue"] <- predicted_num_cpue_wctri
+# Tier 3: order-level slopes
+order_slopes_wctri <- train_wctri %>%
+  group_by(order) %>%
+  summarise(
+    n_train     = n(),
+    order_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_order) %>%
+  select(order, order_slope)
 
-# Analysis as usual 
+# Tier 4: class-level slopes
+class_slopes_wctri <- train_wctri  %>%
+  group_by(class) %>%
+  summarise(
+    n_train     = n(),
+    class_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_class) %>%
+  select(class, class_slope)
+
+# Tier 5: global slope
+# Calculating a single slope using every paired row in the dataset
+global_slope_wctri <- with(train_wctri, sum(wgt_cpue * num_cpue) / sum(num_cpue^2))
+
+# Apply the hierarchy
 wctri <- wctri %>%
-  filter(num_cpue >= 0) %>%
+  left_join(sp_slopes_wctri,    by = "accepted_name") %>%
+  left_join(order_slopes_wctri, by = "order") %>%
+  left_join(class_slopes_wctri, by = "class") %>%
+  mutate(
+    wgt_source = case_when(
+      !is.na(wgt_cpue)                        ~ "observed",
+      !is.na(num_cpue) & !is.na(sp_slope)     ~ "species_model",
+      !is.na(num_cpue) & !is.na(order_slope)  ~ "order_model",
+      !is.na(num_cpue) & !is.na(class_slope)  ~ "class_model",
+      !is.na(num_cpue)                        ~ "global_model",
+      TRUE                                    ~ NA_character_
+    ),
+    wgt_cpue = case_when(
+      wgt_source == "observed"      ~ wgt_cpue,
+      wgt_source == "species_model" ~ sp_slope * num_cpue,
+      wgt_source == "order_model"   ~ order_slope * num_cpue,
+      wgt_source == "class_model"   ~ class_slope * num_cpue,
+      wgt_source == "global_model"  ~ global_slope_wctri * num_cpue
+    )
+  ) %>%
+  select(-sp_slope, -order_slope, -class_slope)
+
+# Checks
+count(wctri, wgt_source)     # How many rows come from each tier
+sum(is.na(wctri$wgt_cpue))   # Should be 0
+wctri %>%                    # Checking how the chondrichthyes have been calculated
+  filter(class %in% c("Elasmobranchii", "Holocephali")) %>%
+  count(class, wgt_source)
+
+# Analysis as usual
+wctri <- wctri %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
-         haul_dur, num_cpue, accepted_name, order, class)
+         haul_dur, wgt_cpue, accepted_name, order, class)
 
 wctri_species <- wctri %>%
-  filter(num_cpue > 0) %>%
+  filter(wgt_cpue > 0) %>%
   distinct(
     lat_cell,
     lon_cell,
@@ -2766,36 +3537,36 @@ wctri_complete <- wctri_hauls %>%
   ) %>%
   left_join(
     wctri %>%
-      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, num_cpue),
+      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name, order, class, wgt_cpue),
     by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name", "order", "class"
     )
   ) %>%
-  mutate(num_cpue = replace_na(num_cpue, 0))
+  mutate(wgt_cpue = replace_na(wgt_cpue, 0))
 
-wctri_mean_num_cpue <- wctri_complete %>%
+wctri_mean_wgt_cpue <- wctri_complete %>%
   group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class) %>%
   summarise(
-    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
+    mean_wgt_cpue = mean(wgt_cpue, na.rm = TRUE),
     n_hauls = n(),
     .groups = "drop"
   )
 
 # **CHECK**
-wctri_mean_num_cpue %>%
+wctri_mean_wgt_cpue %>%
   group_by(lat_cell, lon_cell, accepted_name) %>%
   summarise(
-    max_mean_num_cpue = max(mean_num_cpue),
+    max_mean_wgt_cpue = max(mean_wgt_cpue),
     .groups = "drop") %>%
   summarise(
     n_species = n(),
-    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
-    n_with_zero_only = sum(max_mean_num_cpue == 0)
+    n_with_positive_cpue = sum(max_mean_wgt_cpue > 0),
+    n_with_zero_only = sum(max_mean_wgt_cpue == 0)
   )
 
 
 unique(wctri_full$class)
 
-wctri_elasmo_ts <- wctri_mean_num_cpue %>%
+wctri_elasmo_ts <- wctri_mean_wgt_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
 rm(wctri_env)
@@ -2803,8 +3574,11 @@ rm(wctri_full)
 rm(wctri_species)
 rm(wctri_hauls)
 rm(wctri_complete)
-rm(wctri_model)
-rm(predicted_num_cpue_wctri)
+rm(sp_slopes_wctri)
+rm(order_slopes_wctri)
+rm(class_slopes_wctri)
+rm(train_wctri)
+rm(global_slope_wctri)
 
 
 #===========================================
@@ -2824,50 +3598,94 @@ wcvi <- wcvi_full %>%
   ) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth, haul_dur, num_cpue, num_cpua,
          wgt_cpue, wgt_cpua, accepted_name, order, class) %>%
+  mutate(across(c(num_cpue, num_cpua, wgt_cpue, wgt_cpua), ~ na_if(.x, 0))) %>% # Turning zeros into NAs
   filter( # Removing any rows which are all NA
     !(is.na(num_cpue) &
         is.na(num_cpua) &
         is.na(wgt_cpue) &
         is.na(wgt_cpua)))
 
+# **CHECK** That not losing any hauls
+n_distinct(wcvi_full$haul_id)   # before
+n_distinct(wcvi$haul_id)        # after
 
-# Build model to predict missing wgt_cpue based on num_cpue
-wcvi_model <- lm(wgt_cpue ~ accepted_name * num_cpue, data = wcvi)
-summary(wcvi_model)
-anova(wcvi_model)
+# Training data: rows with BOTH weight and number
+# Also removing rows with zeros as they carry no information
+train_wcvi <- wcvi %>%
+  filter(!is.na(wgt_cpue), !is.na(num_cpue), num_cpue > 0)
 
-# Extract rows where wgt_cpue in NA
-missing_rows_wcvi <- wcvi %>%
-  filter(is.na(wgt_cpue)) %>%
-  mutate(.row_id = which(is.na(wcvi$wgt_cpue))) # Create a temporary row identifier so know where to put predictions back
+# Tier 2: species-specific slopes
+# Take the training data, group by species, summarise the number of rows per species and calculate the 
+# slope from the available data. Filter where there aren't enough rows for a reliable estimate 
+sp_slopes_wcvi <- train_wcvi %>%
+  group_by(accepted_name) %>%
+  summarise(
+    n_train  = n(),
+    sp_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups  = "drop"
+  ) %>%
+  filter(n_train >= min_n_species) %>%
+  select(accepted_name, sp_slope)
 
-# Identify species levels known to the model
-known_species_wcvi <- wcvi_model$xlevels$accepted_name
+# Tier 3: order-level slopes
+order_slopes_wcvi <- train_wcvi %>%
+  group_by(order) %>%
+  summarise(
+    n_train     = n(),
+    order_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_order) %>%
+  select(order, order_slope)
 
-# Keep rows with known species levels
-predictable_rows_wcvi <- missing_rows_wcvi %>%
-  filter(accepted_name %in% known_species_wcvi)
+# Tier 4: class-level slopes
+class_slopes_wcvi <- train_wcvi  %>%
+  group_by(class) %>%
+  summarise(
+    n_train     = n(),
+    class_slope = sum(wgt_cpue * num_cpue) / sum(num_cpue^2),
+    .groups     = "drop"
+  ) %>%
+  filter(n_train >= min_n_class) %>%
+  select(class, class_slope)
 
-# Predict one row at a time, leaving NA if the prediction fails
-predictions_wcvi <- lapply(seq_len(nrow(predictable_rows_wcvi)), function(i) {
-  row <- predictable_rows_wcvi[i,]
-  tryCatch(
-    as.numeric(predict(wcvi_model, newdata = row)),
-    error = function(e) NA_real_
-  )
-})
+# Tier 5: global slope
+# Calculating a single slope using every paired row in the dataset
+global_slope_wcvi <- with(train_wcvi, sum(wgt_cpue * num_cpue) / sum(num_cpue^2))
 
-# Combine predictions
-predicted_values_wcvi <- unlist(predictions_wcvi)
-
-# Fill successful predictions into the original dataset
-valid_predictions_wcvi <- !is.na(predicted_values_wcvi)
-
-wcvi$wgt_cpue[predictable_rows_wcvi$.row_id[valid_predictions_wcvi]] <- predicted_values_wcvi[valid_predictions_wcvi]
-
-# Complete the analysis the same as other datasets PLUS remove any negative values which have been filled with the predict function
+# Apply the hierarchy
 wcvi <- wcvi %>%
-  filter(wgt_cpue >= 0) %>%
+  left_join(sp_slopes_wcvi,    by = "accepted_name") %>%
+  left_join(order_slopes_wcvi, by = "order") %>%
+  left_join(class_slopes_wcvi, by = "class") %>%
+  mutate(
+    wgt_source = case_when(
+      !is.na(wgt_cpue)                        ~ "observed",
+      !is.na(num_cpue) & !is.na(sp_slope)     ~ "species_model",
+      !is.na(num_cpue) & !is.na(order_slope)  ~ "order_model",
+      !is.na(num_cpue) & !is.na(class_slope)  ~ "class_model",
+      !is.na(num_cpue)                        ~ "global_model",
+      TRUE                                    ~ NA_character_
+    ),
+    wgt_cpue = case_when(
+      wgt_source == "observed"      ~ wgt_cpue,
+      wgt_source == "species_model" ~ sp_slope * num_cpue,
+      wgt_source == "order_model"   ~ order_slope * num_cpue,
+      wgt_source == "class_model"   ~ class_slope * num_cpue,
+      wgt_source == "global_model"  ~ global_slope_wcvi * num_cpue
+    )
+  ) %>%
+  select(-sp_slope, -order_slope, -class_slope)
+
+# Checks
+count(wcvi, wgt_source)     # How many rows come from each tier
+sum(is.na(wcvi$wgt_cpue))   # Should be 0
+wcvi %>%                    # Checking how the chondrichthyes have been calculated
+  filter(class %in% c("Elasmobranchii", "Holocephali")) %>%
+  count(class, wgt_source)
+
+# Analysis as usual
+wcvi <- wcvi %>%
   select(survey, haul_id, year, lat_cell, lon_cell, depth,
          haul_dur, wgt_cpue, accepted_name, order, class)
 
@@ -2928,25 +3746,22 @@ wcvi_mean_wgt_cpue %>%
     n_with_zero_only = sum(max_mean_wgt_cpue == 0)
   )
 
+
 unique(wcvi_full$class)
 
 wcvi_elasmo_ts <- wcvi_mean_wgt_cpue %>%
   filter(class %in% c("Elasmobranchii", "Holocephali"))
 
-
-# Clean house
 rm(wcvi_env)
 rm(wcvi_full)
+rm(wcvi_species)
 rm(wcvi_hauls)
 rm(wcvi_complete)
-rm(wcvi_model)
-rm(wcvi_species)
-rm(missing_rows_wcvi)
-rm(predictable_rows_wcvi)
-rm(predictions_wcvi)
-rm(known_species_wcvi)
-rm(predicted_values_wcvi)
-rm(valid_predictions_wcvi)
+rm(sp_slopes_wcvi)
+rm(order_slopes_wcvi)
+rm(class_slopes_wcvi)
+rm(train_wcvi)
+rm(global_slope_wcvi)
 
 
 
