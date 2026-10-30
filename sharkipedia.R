@@ -21,7 +21,7 @@ taxonomy_lookup <- read.csv("taxonomy_lookup.csv")
 # Load CSV
 sharkipedia <- read.csv("sharkipedia_trends_combined.csv")
 
-print(n = 96, result %>% count(general_data_type, unit, unit_freeform, sort = TRUE))
+sharkipedia %>% count(general_data_type, unit, unit_freeform, sort = TRUE)
 
 # Remove NAs, confirmed that these are in years when surveys haven't been done
 # VERY important that these are NOT turned into zeros
@@ -75,7 +75,7 @@ sharkipedia_wide %>%
 
 
 # Checking that each dataset uses one unit
-result %>%
+sharkipedia %>%
   group_by(dataset_id) %>%
   summarise(n_units = n_distinct(unit), n_freeform = n_distinct(unit_freeform)) %>%
   filter(n_units > 1 | n_freeform > 1)
@@ -101,31 +101,31 @@ sharkipedia_wide_edited <- sharkipedia_wide %>%
                      "3456_cortes2007a",
                      "3457_cortes2007a",
                      "3458_cortes2002b",
-                     "3459_rice2015") ~ "Alopiidae",
-      haul_id %in% c("3496_wueringer2017",
-                     "3495_wueringer2017",
-                     "4012_everett2015") ~ "Pristidae",
+                     "3459_rice2015") ~ "Alopias",
+      haul_id %in% c("3495_wueringer2017",
+                     "4012_everett2015") ~ "Pristis",
+      haul_id %in% c("3496_wueringer2017") ~ "Pristidae",
       haul_id %in% c("3548_baum2003",
                      "3554_Steer2020",
-                     "3591_Grubert2013",
-                     "3642_Roff2018",
+                     "3591_Grubert2013") ~ "Carcharhinus",
+      haul_id %in% c("3642_Roff2018",
                      "3643_Roff2018") ~ "Carcharhinidae",
       haul_id %in% c("3656_walker2007b",
-                     "3707_ICES2019",
-                     "3708_ICES2019",
                      "4306_kyne2007k",
-                     "3657_walker2007b") ~ "Centrophoridae",
+                     "3657_walker2007b") ~ "Centrophorus",
+      haul_id %in% c("3707_ICES2019",
+                     "3708_ICES2019") ~ "Deania",
       haul_id %in% c("3716_ICES2018",
                      "3717_ICES2018",
-                     "3887_Marandel2019") ~ "Rajidae",
+                     "3887_Marandel2019") ~ "Leucoraja",
       haul_id %in% c("3871_baum2003",
                      "3872_rice2015",
                      "3873_rice2015",
-                     "3874_cortes2002b") ~ "Lamnidae",
+                     "3874_cortes2002b") ~ "Isurus",
       haul_id %in% c("3951_Pollackunpubl9",
                      "3952_Pollackunpubl9",
-                     "3953_SEDAR2015b") ~ "Triakidae",
-      haul_id %in% c("4010_tuck2018a") ~ "Pristiophoridae",
+                     "3953_SEDAR2015b") ~ "Mustelus",
+      haul_id %in% c("4010_tuck2018a") ~ "Pristiophorus",
       haul_id %in% c("4153_Roff2018",
                      "4154_Roff2018",
                      "4155_simpfendorfer2011b",
@@ -133,8 +133,8 @@ sharkipedia_wide_edited <- sharkipedia_wide %>%
                      "4157_bezerra2016",
                      "4158_baum2003",
                      "4164_reid2011",
-                     "4179_McAuley2012",
-                     "4180_rice2015") ~ "Sphyrnidae",
+                     "4179_McAuley2012") ~ "Sphyrna",
+      haul_id %in% c("4180_rice2015") ~ "Sphyrnidae",
       TRUE ~ accepted_name)) %>%
   left_join(taxonomy_lookup %>%
   rename(
@@ -145,7 +145,7 @@ sharkipedia_wide_edited <- sharkipedia_wide %>%
     class = coalesce(na_if(class, ""), class_lookup)) %>%
   select(-order_lookup, -class_lookup) %>%
   select(survey, haul_id, year, lat_cell, lon_cell, num_cpue, num_cpua, wgt_cpue, 
-         wgt_cpua, other, accepted_name, comments, order, class) %>%
+         wgt_cpua, other, accepted_name, comments, source_observation, order, class) %>%
   filter(!(haul_id == "4012_everett2015" & year %in% c(1964, 1965)))
 
 # Checking for blank values
@@ -167,6 +167,42 @@ sharkipedia_wide_edited %>%
   filter(n_species != 1 | n_lat != 1 | n_lon != 1)
 
 # Saving the dataset
-write_csv(sharkipedia_wide_edited, "sharkipedia_timeseries.csv")
+# Rename some columns for consistency with other databases
+sharkipedia_elasmo_ts <- sharkipedia_wide_edited %>%
+  rename(mean_num_cpue = num_cpue, mean_num_cpua = num_cpua,
+         mean_wgt_cpue = wgt_cpue, mean_wgt_cpua = wgt_cpua)
+
+write_csv(sharkipedia_elasmo_ts, "sharkipedia_timeseries.csv")
+
+
+#=====================================
+# Checking z scores with previous work
+#=====================================
+
+new_z <- read.csv("z_scores_all_timeseries.csv") %>%
+  filter(database == "sharkipedia") %>%
+  unite(identifier, year, lat_cell, lon_cell, accepted_name) %>%
+  rename(new_z = z) %>%
+  select(identifier, new_z)
+
+old_z <- read.csv("shark_data.csv")  %>%
+  mutate(
+    lat_cell = floor(lat),
+    lon_cell = floor(long)
+  ) %>%
+  unite(identifier, year, lat_cell, lon_cell, species) %>%
+  rename(old_z = z_value) %>%
+  select(identifier, old_z)
+
+check <- left_join(new_z, old_z, by = "identifier", relationship = "many-to-many") %>%
+  mutate(
+    across(c("new_z", "old_z"), \(x) round(x, 6)),
+    t_f = new_z == old_z
+    )
+
+check %>%
+  count(t_f)
+
+
 
 
