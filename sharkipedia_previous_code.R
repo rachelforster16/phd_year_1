@@ -21,7 +21,8 @@ library(patchwork)
 # ====================
 
 sharkipedia_previous <- read.csv("shark_data.csv", header = TRUE, sep = ",")
-head(sharkipedia)
+head(sharkipedia_previous)
+
 
 # ===================
 # Section 2: Analysis
@@ -31,11 +32,11 @@ head(sharkipedia)
 # ===================================================================================
 
 # Make slope binomial (negative = 0, positive = 1)
-sharkipedia$binomial_slope <- ifelse(sharkipedia$slope>0, 1, 0)
+sharkipedia_previous$binomial_slope <- ifelse(sharkipedia_previous$slope>0, 1, 0)
 
 # Make subset grouping by ID. One slope per time series.
 
-test_subset <- sharkipedia %>% 
+test_subset_previous <- sharkipedia_previous %>% 
   group_by(ID, species, ocean, tsrange, ldist, order, superorder, MaxTotlength, 
          binomial_slope, slope, lat, long) %>%
   summarise(
@@ -64,7 +65,7 @@ predict_response(glength_model, terms = "MaxTotlength [v]")
 # Test for an interaction between length and superorder
 glength_super_model <- glmer(
   binomial_slope ~ MaxTotlength*superorder + (1|species), 
-  data=test_subset,
+  data=test_subset_previous,
   family = binomial("logit"))
 
 summary(glength_super_model)
@@ -171,7 +172,7 @@ for (start in seq(start_year, end_year - 19)) {
   end <- start + 19
   
   # Subset the data to only include the current 20-year window
-  shark_window <- sharkipedia %>% filter(year >= start & year <= end)
+  shark_window <- sharkipedia_previous %>% filter(year >= start & year <= end)
   
   # Fit a linear model on the window
   model <- lm(z_value ~ year, data = shark_window)
@@ -200,12 +201,12 @@ rm(shark_window)
 # Section 2.3: Abundance and abundance trend over time
 # ====================================================
 
-zscore_model <- lmer(z_value ~ year + (1|species), data = sharkipedia)
+zscore_model <- lmer(z_value ~ year + (1|species), data = sharkipedia_previous)
 summary(zscore_model)
 
 slopeyear_model <- glmer(
   binomial_slope ~ year + (1|species),
-  data=sharkipedia,
+  data=sharkipedia_previous,
   family = binomial("logit")
   )
 
@@ -220,7 +221,7 @@ plogis(-87.9376)
 # =========================================================
 
 #Make loop to look at each species
-uplift_subset <- sharkipedia %>%
+uplift_subset <- sharkipedia_previous %>%
   filter(year>1990)
 
 uplift_results <- data.frame(
@@ -235,7 +236,7 @@ uplift_results <- data.frame(
 # Loop through the dataset 
 for (species_name in unique(uplift_subset$species)) {
   
-  uplift_species <- sharkipedia %>% filter(species==species_name)
+  uplift_species <- sharkipedia_previous %>% filter(species==species_name)
   
   if (nrow(uplift_species) < 20) {
     next  
@@ -277,7 +278,7 @@ uplift_count <- uplift_results %>%
 # ========================================
 
 # Plot density of year frequency
-dist_year <- ggplot(sharkipedia, aes(x = year))+ 
+dist_year <- ggplot(sharkipedia_previous, aes(x = year))+ 
   geom_vline(aes(xintercept = median(year)), color = "red", linetype = "dashed", linewidth = 1)+
   geom_density(alpha = .2, fill = "darkblue")+
   theme_classic()+
@@ -293,7 +294,7 @@ dist_year <- ggplot(sharkipedia, aes(x = year))+
 dist_year
 
 # Distribution of timeseries length
-ts_dist <- sharkipedia %>%
+ts_dist <- sharkipedia_previous %>%
   group_by(ID, tsrange) %>%
   summarise(
     .groups = "drop"
@@ -316,7 +317,7 @@ dist_tsrange <- ggplot(ts_dist, aes(x = tsrange)) +
 dist_tsrange
 
 # ggOceanmap data distribution plot
-lat_lon_counts <- sharkipedia %>% 
+lat_lon_counts <- sharkipedia_previous %>% 
   group_by(lat, long) %>%
   summarise(count = n_distinct(ID), .groups = "drop")
 
@@ -336,7 +337,7 @@ data_map <- basemap(limits = c(-180, 180, -70, 80), bathymetry = TRUE, bathy.sty
 data_map
 
 # Barplot number of timeseries per Chondricthyan order (add silhouettes from phylopic website)
-order_ts_data <- sharkipedia %>% 
+order_ts_data <- sharkipedia_previous %>% 
   group_by(species, ID, order, superorder) %>% 
   summarise(n = n(), .groups = "drop")
 
@@ -514,7 +515,7 @@ slope_map <- basemap( limits = c(-180, 180, -70, 80), bathymetry = TRUE, bathy.s
 slope_map
 
 # Early slope map (1920 - 1990)
-early_map <- sharkipedia %>% 
+early_map <- sharkipedia_previous %>% 
   filter(between(year, 1920, 1990))
 
 early_map <- early_map %>% 
@@ -559,7 +560,7 @@ early_slope_map
 
 #Late map 1990-2020
 
-late_map <- sharkipedia %>% 
+late_map <- sharkipedia_previous %>% 
   filter(between(year, 1990,2020))
 
 late_map <- late_map %>% 
