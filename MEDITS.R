@@ -324,8 +324,8 @@ head(unmatched, 8)
 # Manually add names for those where the code and species name can be found online (e.g. the MEDITS handbook)
 manual_names <- tibble(
   MeditsCode = c("ARGRACU", "ASCDCEA", "BUCCSPP", "FMBONEL", "GASTRDA", "ILLESPP", "PTEDGRI", "SOLEAEG"),
-  Scientific_name = c("Argyropelecus aculeatus", "Ascidiacea spp.", "Buccinum spp", "Bonellia viridis", "Gastropoda spp.", 
-                      "Illex spp.", "Pteroeides griseum", "Solea aegyptiaca")
+  Scientific_name = c("Argyropelecus aculeatus", "Ascidiacea", "Buccinidae", "Bonellia viridis", "Gastropoda", 
+                      "Ommastrephidae", "Pteroeides griseum", "Solea aegyptiaca")
 )
 
 Sp_Medits <- bind_rows(Sp_Medits, manual_names) %>%
