@@ -13,38 +13,6 @@ library(rnaturalearth)
 library(rnaturalearthdata)
 library(broom)
 
-#================================
-# Taxonomy - create lookup tables
-#================================
-
-# Load taxonomy
-# taxonomy <- load_taxa(server=getOption("fishbase"))
-
-# Create species lookup table
-# species_lookup <- taxonomy %>%
-#  select(Species, SpecCode, Order, Class, SuperClass) %>%
-#  rename(accepted_name = Species) %>%
-#  distinct()
-
-# Create family lookup table
-# family_lookup <- taxonomy %>%
-#  select(Family, SpecCode, Order, Class, SuperClass) %>%
-#  rename(accepted_name = Family) %>%
-#  distinct()
-
-# Combine
-# taxonomy_lookup <- bind_rows(species_lookup, family_lookup) %>%
-#  distinct(accepted_name, .keep_all = TRUE) %>%
-#  rename(fishbase_code = SpecCode, order = Order, class = Class, superclass = SuperClass)
-
-# Check each name only occurs once
-# taxonomy_lookup %>%
-#  count(accepted_name) %>%
-#  filter(n > 1)
-
-# Save as CSV
-# write_csv(taxonomy_lookup, "taxonomy_lookup.csv")
-
 taxonomy_lookup <- read.csv("taxonomy_lookup.csv")
 
 #=======================================================================
@@ -789,7 +757,7 @@ rm(is_med_complete)
 
 rev_285_full <- read.csv("REVIZEE_285.csv")
 
-rev_285_full$survey <- "OBIS Brazil"
+rev_285_full$survey <- "REVIZEE_285"
 
 rev_285 <- rev_285_full %>%
   ungroup() %>%
@@ -891,7 +859,7 @@ rm(rev_285_complete)
 
 rev_284_full <- read.csv("REVIZEE_284.csv")
 
-rev_284_full$survey <- "OBIS Brazil"
+rev_284_full$survey <- "REVIZEE_284"
 
 rev_284 <- rev_284_full %>%
   ungroup() %>%
@@ -993,7 +961,7 @@ rm(rev_284_complete)
 
 rev_135_full <- read.csv("REVIZEE_135.csv")
 
-rev_135_full$survey <- "OBIS Brazil"
+rev_135_full$survey <- "REVIZEE_135"
 
 rev_135 <- rev_135_full %>%
   ungroup() %>%
