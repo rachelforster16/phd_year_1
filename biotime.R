@@ -1364,13 +1364,117 @@ rm(csiro_hauls)
 rm(csiro_complete)
 
 
+#===========================================================================
+# Operation Wallacea reef fish surveys at Utila, Honduras
+#===========================================================================
+
+utila_full <- read.csv("utila.csv")
+
+utila_full$survey <- "Utila"
+
+utila <- utila_full %>%
+  ungroup() %>%
+  mutate(
+    lat_cell = floor(LATITUDE),
+    lon_cell = floor(LONGITUDE)
+  )
+
+# **CHECK** Each SAMPLE_DESC corresponds with only one year/grid cell combination
+utila %>%
+  distinct(
+    SAMPLE_DESC,
+    YEAR,
+    lat_cell,
+    lon_cell
+  ) %>%
+  count(SAMPLE_DESC) %>%
+  filter(n > 1)
+
+utila <- utila %>%
+  rename(accepted_name = valid_name, num_cpue = ABUNDANCE, year = YEAR, haul_id = SAMPLE_DESC) %>%
+  left_join(taxonomy_lookup, by="accepted_name") %>%
+  select(survey, haul_id, year, lat_cell, lon_cell, num_cpue, accepted_name,
+         order, class, superclass)
+
+
+utila_species <- utila %>%
+  filter(num_cpue > 0) %>% 
+  distinct(                
+    lat_cell,
+    lon_cell,
+    accepted_name,
+    order,
+    class,
+    superclass
+  )
+
+# **CHECK** Only one row per species per grid cell
+utila_species %>%
+  count(lat_cell, lon_cell, accepted_name, order, class, superclass) %>%
+  filter(n > 1)
+
+utila_hauls <- utila %>%
+  distinct(survey, haul_id, year, lat_cell, lon_cell)
+
+# **CHECK** Only one row per haul
+utila_hauls %>%
+  count(survey, haul_id) %>%
+  filter(n > 1)
+
+utila_complete <- utila_hauls %>%
+  inner_join(
+    utila_species,
+    by = c("lat_cell", "lon_cell"),
+    relationship = "many-to-many"
+  ) %>%
+  left_join(
+    utila %>%
+      select(survey, haul_id, year, lat_cell, lon_cell, accepted_name,
+             order, class, superclass, num_cpue),
+    by = c("survey", "haul_id", "year", "lat_cell", "lon_cell", "accepted_name",
+           "order", "class", "superclass")
+  ) %>%
+  mutate(num_cpue = replace_na(num_cpue, 0))
+
+utila_mean_num_cpue <- utila_complete %>%
+  group_by(survey, year, lat_cell, lon_cell, accepted_name, order, class, superclass) %>%
+  summarise(
+    mean_num_cpue = mean(num_cpue, na.rm = TRUE),
+    n_hauls = n(),
+    .groups = "drop"
+  )
+
+# **CHECK** Every species/grid cell combination has >1 positive combination
+utila_mean_num_cpue %>%
+  group_by(lat_cell, lon_cell, accepted_name) %>%
+  summarise(
+    max_mean_num_cpue = max(mean_num_cpue),
+    .groups = "drop") %>%
+  summarise(
+    n_species = n(),
+    n_with_positive_cpue = sum(max_mean_num_cpue > 0),
+    n_with_zero_only = sum(max_mean_num_cpue == 0)
+  )
+
+unique(utila$superclass)
+utila_elasmo_ts <- utila_mean_num_cpue %>%
+  filter(superclass %in% c("Chondrichthyes"))
+
+# Clean house
+rm(utila_full)
+rm(utila_species)
+rm(utila_hauls)
+rm(utila_complete)
+
+
+
 #==================
 # Bind all together
 #==================
 
 biotime_ts <- bind_rows(alcatrazes_elasmo_ts, cred_elasmo_ts, csiro_elasmo_ts, croix_elasmo_ts, hoga_elasmo_ts, is_med_elasmo_ts,
                         mcr_elasmo_ts, pelagic_elasmo_ts, rev_135_elasmo_ts, rev_284_elasmo_ts, rev_285_elasmo_ts,
-                        stj_elasmo_ts)
+                        stj_elasmo_ts, utila_elasmo_ts)
 
 
 write_csv(biotime_ts, "Biotime_timeseries.csv")
