@@ -13,30 +13,9 @@ library(rnaturalearth)
 library(rnaturalearthdata)
 library(broom)
 
-# Loading timeseries
-fishglob_ts <- read.csv("Fishglob_timeseries.csv") %>%
-  mutate(database = "FishGLOB")
-biotime_ts <- read.csv("Biotime_timeseries.csv") %>%
-  mutate(database = "BioTIME")
-IMOS_ts <- read.csv("IMOS_timeseries.csv") %>%
-  mutate(database = "IMOS")
-timefish_ts <- read.csv("TimeFISH_timeseries.csv") %>%
-  mutate(database = "TimeFISH")
-soviet_trawl_ts <- read.csv("SovietTrawl_timeseries.csv") %>%
-  mutate(database = "SovietTrawl")
-NSW_ts <- read.csv("NSW_timeseries.csv") %>%
-  mutate(database = "NSW")
-MEDITS_nw_ts <- read.csv("MEDITS_nw_timeseries.csv") %>%
-  mutate(database = "MEDITS_nw")
-MEDITS_spain_ts <- read.csv("MEDITS_spain_timeseries.csv") %>%
-  mutate(database = "MEDITS_spain")
-MEDITS_blacksea_ts <- read.csv("MEDITS_blacksea_timeseries.csv") %>%
-  mutate(database = "MEDITS_blacksea")
-IATTC_ts <- read.csv("IATTC_timeseries.csv") %>%
-  mutate(database = "IATTC")
-sharkipedia_ts <- read.csv("sharkipedia_timeseries.csv") %>%
-  mutate(database = "sharkipedia", survey = "sharkipedia")
-  
+# Loading timeseries data which calculated z scores
+# NO filtering has happened on this data e.g. length of timeseries or available species data etc.
+maps_data <- read.csv("z_scores_all_timeseries.csv")
 
 #============================
 # Map with surveyed locations
@@ -48,12 +27,11 @@ world <- ne_countries(
   returnclass = "sf")
 
 # Creating a dataframe with each lat cell and lon cell combination which has been surveyed
-surveyed_cells <- bind_rows(fishglob_ts, biotime_ts, IMOS_ts, timefish_ts, soviet_trawl_ts, NSW_ts,
-                            MEDITS_nw_ts, MEDITS_spain_ts, MEDITS_blacksea_ts, IATTC_ts, sharkipedia_ts) %>%
+surveyed_cells_all <- maps_data %>%
   distinct(database, lat_cell, lon_cell)
 
 # Turning this into geographic polygons
-surveyed_cells_sf <- surveyed_cells %>%
+surveyed_cells_sf_all <- surveyed_cells_all %>%
   mutate(
     xmin = lon_cell,        # Define the boundaries of each cell
     xmax = lon_cell + 1,
@@ -73,7 +51,7 @@ surveyed_cells_sf <- surveyed_cells %>%
   select(database, lat_cell, lon_cell, geometry)
 
 
-survey_coverage_map <- ggplot() +
+survey_coverage_map_all <- ggplot() +
   geom_sf(
     data = world,
     fill = "grey90",
@@ -81,7 +59,7 @@ survey_coverage_map <- ggplot() +
     linewidth = 0.2
   ) +
   geom_sf(
-    data = surveyed_cells_sf,
+    data = surveyed_cells_sf_all,
     aes(fill = database),
     colour = "white",
     linewidth = 0.1
@@ -94,19 +72,9 @@ survey_coverage_map <- ggplot() +
     fill = "Database"
   )
 
-survey_coverage_map
+survey_coverage_map_all
 
 
-
-
-
-
-
-
-# All data?????
-
-all_timeseries <- bind_rows(fishglob_ts, biotime_ts, IMOS_ts, timefish_ts, soviet_trawl_ts, NSW_ts,
-                            MEDITS_nw_ts, MEDITS_spain_ts, MEDITS_blacksea_ts, IATTC_ts)
 
 
 
