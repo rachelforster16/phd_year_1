@@ -487,7 +487,7 @@ year_distance_slopes_plot
 
 
 #============================
-# Length and distance togther
+# Length and distance together
 #============================
 
 length_dist_model <- glmer(binomial_slope ~ max_total_length + dist_to_land + (1|valid_species) + (1|group),
@@ -497,13 +497,9 @@ length_dist_model_check <- simulateResiduals(length_dist_model)
 plot(length_dist_model_check, quantreg = T)
 
 
-#========================================================
-# Sliding window results - looking for an uplift in trend
-#========================================================
-
-series_id_df <- all_timeseries_filtered %>%
-  mutate(series_id = paste(database, survey, lat_cell, lon_cell, accepted_name, sep = "|"),
-         group = ifelse(database == "sharkipedia", "sharkipedia", survey)) # Because all sharkipedia surveys are one series which causes problem for random effect
+#=======================
+# Sliding window results
+#=======================
 
 window_length <- 20
 min_years <- 5 # how many years a series needs inside a window to contribute to that window's slope
@@ -522,7 +518,7 @@ for (start in seq(start_year, end_year - window_length + 1)) {
     filter(year >= start & year <= end) %>%
     group_by(series_id, group, database) %>%
     filter(n() >= min_years) %>%
-    summarise(slope = coef(lmer(z ~ year + (1|valid_species)))[2], .groups = "drop")
+    summarise(slope = coef(lm(z ~ year))[2], .groups = "drop")
   
   # How many series a window needs to run - too low and the average isn't trustworthy
   # How many surveys a window needs (needs to be more than 1 for (1|group) to work) - 5 is a common minimum for a random effect
@@ -565,6 +561,289 @@ sliding_window_plot <- ggplot(sliding_window_results, aes(x = mid_year, y = esti
 
 sliding_window_plot
 
+
+#===========================
+# Sliding window results NEW
+#===========================
+
+window_length <- 20 
+min_years <- 10 # How many years a series needs inside a window to contribute to that window's slope
+# Too small then that window can be influenced by a dataset which is only in the last e.g. 2 years
+
+# Define the range of years in the dataset
+start_year <- min(all_timeseries_filtered$year, na.rm = TRUE)
+end_year   <- max(all_timeseries_filtered$year, na.rm = TRUE)
+
+sliding_window_results <- data.frame()
+
+# Loop through the dataset with a sliding window of 20 years, moving by 1 year
+for (start in seq(start_year, end_year - window_length + 1)) {
+  end <- start + window_length - 1
+  
+  data_window <- all_timeseries_filtered %>%
+    filter(year >= start & year <= end) %>%
+    group_by(series_id) %>%
+    filter(n_distinct(year) >= min_years) %>%
+    ungroup()
+  
+  # How many series a window needs to run - too low and the average isn't trustworthy
+  if (n_distinct(data_window$series_id) < 10) next
+  
+  model <- lmer(z ~ year + (1|series_id), data = data_window)
+  fe <- summary(model)$coefficients
+  
+  sliding_window_results <- rbind(sliding_window_results, data.frame(
+    start_year = start,
+    end_year = end,
+    estimate = fe["year", "Estimate"],
+    std_err = fe["year", "Std. Error"],
+    n_series = nrow(data_window),
+    n_groups = n_distinct(data_window$group)
+  ))
+}
+
+print(sliding_window_results)
+
+
+# PLOTTING
+# Sliding window analysis results
+sliding_window_plot <- ggplot(sliding_window_results, aes(x = start_year, y = estimate)) +
+  geom_ribbon(aes(ymin = estimate - 1.96 * std_err,
+                  ymax = estimate + 1.96 * std_err),
+              fill = "darkblue", alpha = 0.2) +
+  geom_line(colour = "darkblue") +
+  geom_hline(yintercept = 0, colour = "red", linewidth = 0.5) +
+  theme_classic() +
+  scale_x_continuous(limits = c(1940, 2007), breaks = seq(from = 1940, to = 2010, by = 10)) +
+  scale_y_continuous(limits = c(-0.07, 0.03), breaks = seq(from = -0.07, to = 0.03, by = 0.01)) +
+  labs(x = "Start year of window", y = "Average change in z per year across\nall rows in window (in SD per year)") +
+  theme(axis.text.x = element_text(size = 14, family = "Arial"),
+        axis.text.y = element_text(size = 14, family = "Arial"),
+        axis.title.x = element_text(size = 18, family = "Arial"),
+        axis.title.y = element_text(size = 18, family = "Arial"),
+        plot.margin = margin(1, 1, 1, 1, "cm"))
+
+sliding_window_plot
+
+
+# Splitting the data into size classes
+species_lengths <- all_timeseries_filtered %>%
+  distinct(valid_species, max_total_length) %>%
+  mutate(size_class = cut(max_total_length,
+                          quantile(max_total_length, c(0, 1/3, 2/3, 1)),
+                          labels = c("small", "medium", "large"),
+                          include.lowest = TRUE)) %>%
+  select(-max_total_length)
+
+all_timeseries_filtered <- all_timeseries_filtered %>%
+  left_join(species_lengths, by = "valid_species")
+
+
+# Small species
+small <- all_timeseries_filtered %>%
+  filter(size_class == "small")
+
+small_start_year <- min(small$year, na.rm = TRUE)
+small_end_year   <- max(small$year, na.rm = TRUE)
+
+small_sliding_window_results <- data.frame()
+
+# Loop through the dataset with a sliding window of 20 years, moving by 1 year
+for (start in seq(small_start_year, small_end_year - window_length + 1)) {
+  end <- start + window_length - 1
+  
+  data_window <- small %>%
+    filter(year >= start & year <= end) %>%
+    group_by(series_id) %>%
+    filter(n_distinct(year) >= min_years) %>%
+    ungroup()
+  
+  # How many series a window needs to run - too low and the average isn't trustworthy
+  if (n_distinct(data_window$series_id) < 10) next
+  
+  model <- lmer(z ~ year + (1|series_id), data = data_window)
+  fe <- summary(model)$coefficients
+  
+  small_sliding_window_results <- rbind(small_sliding_window_results, data.frame(
+    small_start_year = start,
+    small_end_year = end,
+    estimate = fe["year", "Estimate"],
+    std_err = fe["year", "Std. Error"],
+    n_series = nrow(data_window),
+    n_groups = n_distinct(data_window$group)
+  ))
+}
+
+print(small_sliding_window_results)
+
+
+# PLOTTING
+# Sliding window analysis results
+small_sliding_window_plot <- ggplot(small_sliding_window_results, aes(x = small_start_year, y = estimate)) +
+  geom_ribbon(aes(ymin = estimate - 1.96 * std_err,
+                  ymax = estimate + 1.96 * std_err),
+              fill = "darkblue", alpha = 0.2) +
+  geom_line(colour = "darkblue") +
+  geom_hline(yintercept = 0, colour = "red", linewidth = 0.5) +
+  theme_classic() +
+  scale_x_continuous(limits = c(1940, 2007), breaks = seq(from = 1940, to = 2010, by = 10)) +
+  scale_y_continuous(limits = c(-0.07, 0.03), breaks = seq(from = -0.07, to = 0.03, by = 0.01)) +
+  labs(x = "Start year of window", y = "Average change in z per year across\nall rows in window (in SD per year)") +
+  theme(axis.text.x = element_text(size = 14, family = "Arial"),
+        axis.text.y = element_text(size = 14, family = "Arial"),
+        axis.title.x = element_text(size = 18, family = "Arial"),
+        axis.title.y = element_text(size = 18, family = "Arial"),
+        plot.margin = margin(1, 1, 1, 1, "cm"))
+
+small_sliding_window_plot
+
+# Medium species
+medium <- all_timeseries_filtered %>%
+  filter(size_class == "medium")
+
+medium_start_year <- min(medium$year, na.rm = TRUE)
+medium_end_year   <- max(medium$year, na.rm = TRUE)
+
+medium_sliding_window_results <- data.frame()
+
+# Loop through the dataset with a sliding window of 20 years, moving by 1 year
+for (start in seq(medium_start_year, medium_end_year - window_length + 1)) {
+  end <- start + window_length - 1
+  
+  data_window <- medium %>%
+    filter(year >= start & year <= end) %>%
+    group_by(series_id) %>%
+    filter(n_distinct(year) >= min_years) %>%
+    ungroup()
+  
+  # How many series a window needs to run - too low and the average isn't trustworthy
+  if (n_distinct(data_window$series_id) < 10) next
+  
+  model <- lmer(z ~ year + (1|series_id), data = data_window)
+  fe <- summary(model)$coefficients
+  
+  medium_sliding_window_results <- rbind(medium_sliding_window_results, data.frame(
+    medium_start_year = start,
+    medium_end_year = end,
+    estimate = fe["year", "Estimate"],
+    std_err = fe["year", "Std. Error"],
+    n_series = nrow(data_window),
+    n_groups = n_distinct(data_window$group)
+  ))
+}
+
+print(medium_sliding_window_results)
+
+
+# PLOTTING
+# Sliding window analysis results
+medium_sliding_window_plot <- ggplot(medium_sliding_window_results, aes(x = medium_start_year, y = estimate)) +
+  geom_ribbon(aes(ymin = estimate - 1.96 * std_err,
+                  ymax = estimate + 1.96 * std_err),
+              fill = "darkblue", alpha = 0.2) +
+  geom_line(colour = "darkblue") +
+  geom_hline(yintercept = 0, colour = "red", linewidth = 0.5) +
+  theme_classic() +
+  scale_x_continuous(limits = c(1940, 2007), breaks = seq(from = 1940, to = 2010, by = 10)) +
+  scale_y_continuous(limits = c(-0.07, 0.03), breaks = seq(from = -0.07, to = 0.03, by = 0.01)) +
+  labs(x = "Start year of window", y = "Average change in z per year across\nall rows in window (in SD per year)") +
+  theme(axis.text.x = element_text(size = 14, family = "Arial"),
+        axis.text.y = element_text(size = 14, family = "Arial"),
+        axis.title.x = element_text(size = 18, family = "Arial"),
+        axis.title.y = element_text(size = 18, family = "Arial"),
+        plot.margin = margin(1, 1, 1, 1, "cm"))
+
+medium_sliding_window_plot
+
+
+# Large species
+large <- all_timeseries_filtered %>%
+  filter(size_class == "large")
+
+large_start_year <- min(large$year, na.rm = TRUE)
+large_end_year   <- max(large$year, na.rm = TRUE)
+
+large_sliding_window_results <- data.frame()
+
+# Loop through the dataset with a sliding window of 20 years, moving by 1 year
+for (start in seq(large_start_year, large_end_year - window_length + 1)) {
+  end <- start + window_length - 1
+  
+  data_window <- large %>%
+    filter(year >= start & year <= end) %>%
+    group_by(series_id) %>%
+    filter(n_distinct(year) >= min_years) %>%
+    ungroup()
+  
+  # How many series a window needs to run - too low and the average isn't trustworthy
+  if (n_distinct(data_window$series_id) < 10) next
+  
+  model <- lmer(z ~ year + (1|series_id), data = data_window)
+  fe <- summary(model)$coefficients
+  
+  large_sliding_window_results <- rbind(large_sliding_window_results, data.frame(
+    large_start_year = start,
+    large_end_year = end,
+    estimate = fe["year", "Estimate"],
+    std_err = fe["year", "Std. Error"],
+    n_series = nrow(data_window),
+    n_groups = n_distinct(data_window$group)
+  ))
+}
+
+print(large_sliding_window_results)
+
+
+# PLOTTING
+# Sliding window analysis results
+large_sliding_window_plot <- ggplot(large_sliding_window_results, aes(x = large_start_year, y = estimate)) +
+  geom_ribbon(aes(ymin = estimate - 1.96 * std_err,
+                  ymax = estimate + 1.96 * std_err),
+              fill = "darkblue", alpha = 0.2) +
+  geom_line(colour = "darkblue") +
+  geom_hline(yintercept = 0, colour = "red", linewidth = 0.5) +
+  theme_classic() +
+  scale_x_continuous(limits = c(1940, 2007), breaks = seq(from = 1940, to = 2010, by = 10)) +
+  scale_y_continuous(limits = c(-0.07, 0.03), breaks = seq(from = -0.07, to = 0.03, by = 0.01)) +
+  labs(x = "Start year of window", y = "Average change in z per year across\nall rows in window (in SD per year)") +
+  theme(axis.text.x = element_text(size = 14, family = "Arial"),
+        axis.text.y = element_text(size = 14, family = "Arial"),
+        axis.title.x = element_text(size = 18, family = "Arial"),
+        axis.title.y = element_text(size = 18, family = "Arial"),
+        plot.margin = margin(1, 1, 1, 1, "cm"))
+
+large_sliding_window_plot
+
+sliding_window_plot + small_sliding_window_plot + medium_sliding_window_plot + large_sliding_window_plot
+
+
+all_plot <- ggplot() +
+  geom_ribbon(data = sliding_window_results, aes(x = start_year, y = estimate, ymin = estimate - 1.96 * std_err, ymax = estimate + 1.96 * std_err),
+              fill = "grey80", alpha = 0.8) +
+  geom_line(data = sliding_window_results, aes(x = start_year, y = estimate), linewidth = 0.8, linetype = "longdash") +
+  geom_ribbon(data = large_sliding_window_results, aes(x = large_start_year, y = estimate, ymin = estimate - 1.96 * std_err, ymax = estimate + 1.96 * std_err),
+              fill = "darkblue", alpha = 0.2) +
+  geom_line(data = large_sliding_window_results, aes(x = large_start_year, y = estimate), colour = "darkblue", linetype = "dotted") +
+  geom_ribbon(data = medium_sliding_window_results, aes(x = medium_start_year, y = estimate, ymin = estimate - 1.96 * std_err, ymax = estimate + 1.96 * std_err),
+              fill = "cornflowerblue", alpha = 0.2) +
+  geom_line(data = medium_sliding_window_results, aes(x = medium_start_year, y = estimate), colour = "cornflowerblue", linetype = "dashed") +
+  geom_ribbon(data = small_sliding_window_results, aes(x = small_start_year, y = estimate, ymin = estimate - 1.96 * std_err, ymax = estimate + 1.96 * std_err),
+              fill = "lightblue", alpha = 0.2) +
+  geom_line(data = small_sliding_window_results, aes(x = small_start_year, y = estimate), colour = "lightblue") +
+  geom_hline(yintercept = 0, colour = "red") +
+  theme_classic() +
+  scale_x_continuous(limits = c(1940, 2007), breaks = seq(from = 1940, to = 2010, by = 10)) +
+  scale_y_continuous(limits = c(-0.07, 0.03), breaks = seq(from = -0.07, to = 0.03, by = 0.01)) +
+  labs(x = "Start year of window", y = "Average change in z per year across\nall rows in window (in SD per year)") +
+  theme(axis.text.x = element_text(size = 14, family = "Arial"),
+        axis.text.y = element_text(size = 14, family = "Arial"),
+        axis.title.x = element_text(size = 18, family = "Arial"),
+        axis.title.y = element_text(size = 18, family = "Arial"),
+        plot.margin = margin(1, 1, 1, 1, "cm"))
+  
+
+
+all_plot
 
 #=======================
 # Data description plots
