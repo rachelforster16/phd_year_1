@@ -153,18 +153,6 @@ if (any(metric_check$n_metrics > 1)) {
           paste(metric_check$survey[metric_check$n_metrics > 1], collapse = ", "))
 }
 
-# Remove any timeseries which are shorter than 5 years
-# **CHECK** is there more than one row per series per year?
-all_timeseries %>%
-  count(survey, lat_cell, lon_cell, accepted_name, year) %>%
-  filter(n > 1)
-
-all_timeseries <- all_timeseries %>%
-  group_by(survey, lat_cell, lon_cell, accepted_name) %>%
-  mutate(n_years = n_distinct(year[!is.na(value)])) %>%
-  ungroup() %>%
-  filter(n_years >= 5)
-
 # Calculate z scores within each survey at species level 
 # z = (x - mean) / sd, using the sample SD (n - 1), per survey.
 all_timeseries_z <- all_timeseries %>%
@@ -179,6 +167,44 @@ all_timeseries_z <- all_timeseries %>%
   ungroup() %>%
   select(-mean_num_cpue, -mean_num_cpua, -mean_wgt_cpue, -mean_wgt_cpua, -other)
 
+# Determine the reasoning for NAs in Z score column
+# Could be due to NA values, only series legnth of 1, or all the values are the same across the series
+na_diagnosis <- all_timeseries_z %>%
+  group_by(database, survey, lat_cell, lon_cell, accepted_name) %>%
+  mutate(
+    n_obs   = sum(!is.na(value)),
+    n_years = n_distinct(year[!is.na(value)])
+  ) %>%
+  ungroup() %>%
+  mutate(
+    na_reason = case_when(
+      !is.na(z)                  ~ "z calculated",
+      is.na(value)               ~ "value is NA",
+      n_obs == 1                 ~ "series length 1",
+      series_sd == 0             ~ "constant series (sd = 0)",
+      TRUE                       ~ "other"
+    )
+  )
+
+# Overall breakdown
+table(na_diagnosis$na_reason)
+
+# Breakdown by database
+na_diagnosis %>%
+  filter(is.na(z)) %>%
+  count(database, na_reason) %>%
+  arrange(database, desc(n))
+
+# Series length distribution of the NA rows
+na_diagnosis %>%
+  filter(is.na(z)) %>%
+  count(n_obs) %>%
+  arrange(n_obs)
+
+# Remove the NA values if safe to do so
+all_timeseries_z <- all_timeseries_z %>%
+  filter(!is.na(z))
+
 # **CHECK**
 check <- all_timeseries_z %>%
   group_by(database, survey, lat_cell, lon_cell, accepted_name) %>%
@@ -189,8 +215,6 @@ check <- all_timeseries_z %>%
 summary(check$z_mean)   # ~ 0 everywhere
 summary(check$z_sd)     # 1 everywhere (NA for constant series)
 sum(is.na(all_timeseries_z$z))   # rows with no z (constant series)
-
-
 
 # Save CSV
 write_csv(all_timeseries_z, "z_scores_all_timeseries.csv")
